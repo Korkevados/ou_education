@@ -1,0 +1,278 @@
+Send
+Send SMS
+Description
+You can use this API to send an SMS message.
+
+Endpoint
+    
+POST https://019sms.co.il/api
+
+  
+Parameters
+Name	Type	Description	Required
+username	string	The username of the account by which you are recognized in the system.	✔️
+source	string	The phone number from which you wish to send the SMS message. Must be maximum 11 characters and contains only numeric value (no +sign) and English letters	✔️
+destinations	object	Contains all phone destinations you wish to send the SMS to. May contain multiple phone fields.	✔️
+phone	string	phone number to which the SMS, must be formatted : 5xxxxxxx or 05xxxxxxx	✔️
+id	string	An attribute of the phone element. If you’re interested in checking for DLR’s enter your ID for the SMS to query it later. Leave blank or don’t add it if you’re not interested.	➖
+tag	string	basically for GOOGLE's automatic SMS verification users ,allows you to add tag to the beginning of the message ,for example : <tag>#</tag><message>Hello world</message> result=> "<#>Hello world"	➖
+add_dynamic	string	If you wish that the SMS will send with the Dynamic Field of the contact list, set 1, any other value would be considered as no. This will check that there are no singles phone tags in the XML an no more than 1 <cl_id> tag, To use dynamic field, you need to use the following template: [DYNAMIC_FIELD1] for the first dynamic field and so on. For example: <message>Hello [DYNAMIC_FIELD1] [DYNAMIC_FIELD2]	➖
+message	string	Contains the message to be sent to the destinations.Must be maximum 1005 characters.	✔️
+timing	string	the date in which the sms to be sent. If absent then will send immediately. Format : dd/mm/yy hh:mm	➖
+add_unsubscribe	int	If you want to add SMS option for removal.Remove by link set 3, Remove by return SMS set 2, any other value would be considering as no.	➖
+cl_id	string	If you wish send a message to a contact lists. You should enter the ID of the contact list.	➖
+temp_bl	string	If you wish to filter destinations that received a message in the last X days, You should enter the number of days between 1-14.	➖
+includes_international	int	If you wish to send sms with international destinations, You should enter 1, else 0	➖
+campaign_name	string	Campaign name that will be displayed on system reports. Must be maximum 50 characters.	➖
+links	object	Contains all links you want to shorten inside SMS. May contain multiple link fields.	➖
+link	string	Link you want to shorten. Must contain 'id' attribute. In message, write '[link-id]' where you want to display the shorten link.	➖
+Request Example
+Xml Json
+json
+Copy code
+    
+{
+  "sms": {
+    "user": {
+      "username": "Leeroy"
+    },
+    "source": "DemoAPI",
+    "destinations": {
+      "cl_id": [
+        "21518",
+        "21500"
+      ],
+      "phone": [
+        {
+          "$": {
+            "id": "external id1"
+          },
+          "_": "5xxxxxxxx"
+        },
+        {
+          "$": {
+            "id": "external id2"
+          },
+          "_": "5xxxxxxxx"
+        },
+        {
+          "_": "5xxxxxxxx"
+        },
+        {
+          "$": {
+            "id": ""
+          },
+          "_": "5xxxxxxxx"
+        }
+      ]
+    },
+    "tag": "#",
+    "message": "This is a sample message. [link-a1]",
+    "add_dynamic": "0",
+    "timing": "30/03/14 10:10",
+    "add_unsubscribe": "0",
+    "temp_bl": "2",
+    "includes_international": "1",
+    "campaign_name": "Sample Campaign",
+    "links": {
+      "link": [
+        {
+          "$": {
+            "id": "a1"
+          },
+          "_": "https://www.example.com/path/to/resource"
+        }
+      ]
+    }
+  }
+}
+
+
+Api OTP
+Send otp
+Description
+You can use this API to send otp code.
+
+Endpoint
+    
+POST https://019sms.co.il/api
+
+  
+Parameters
+Name	Type	Description	Required
+send_otp	object	Contains all other elements.	✔️
+user	object	Contains the user element.	✔️
+username	string	The username of the account by which you are recognized in the system	✔️
+phone	int	Must be formatted: 5xxxxxxx or 05xxxxxxx	✔️
+app_id	int	If you have several applications that you want to use with this service - use to differentiate the authentication in each application. By default it is 1	➖
+source	string	The source number of the SMS, meaning the number that will appear as the sender.	✔️
+max_tries	int	A number between 3-5. which means how many attempts you can make on the code. By default it is 3	➖
+valid_time	int	A number between 1-15. That means how many minutes the code will be available. By default it is 5	➖
+text	string	Custom text – must contains '[code]' in which the real code will appear in the message for the destination. (if not send the default is : ' the code is [code]')	➖
+Request Example
+Xml Json
+json
+Copy code
+    
+{
+  "send_otp": {
+    "user": {
+      "username": "username"
+    },
+    "phone": "05XXXXXXXX",
+    "app_id": "1000",
+    "source": "***",
+    "max_tries": "4",
+    "text": "the code is [code]"
+  }
+}
+
+  
+Response Example
+Xml Json
+json
+Copy code
+    
+{
+  "status": 0,
+  "code": "494036",
+  "message": "The code is : 494036 and is valid for 5 minutes"
+}
+
+  
+Note
+
+Full description of the response status and message can be found in here:
+
+Validate otp
+Description
+You can use this API to check if some otp code is valid.
+
+Endpoint
+    
+POST https://019sms.co.il/api
+
+  
+Parameters
+Name	Type	Description	Required
+validate_otp	object	Contains all other elements.	✔️
+user	object	Contains the user element.	✔️
+username	string	The username of the account by which you are recognized in the system	✔️
+phone	object	must be formatted: 5xxxxxxx or 05xxxxxxx	✔️
+app_id	object	, if you have several apps that you want to use this service - use to differentiate the authentication in each application.By default it is 1	➖
+code	int	Number with 6 digit – the code you want to validate for this phone.	✔️
+Request Example
+Xml Json
+json
+Copy code
+    
+{
+  "validate_otp": {
+    "user": {
+      "username": "username"
+    },
+    "phone": "05XXXXXXXX",
+    "app_id": "1000",
+    "code": "653123",
+    "destination_type": "1"
+  }
+}
+
+  
+Response Example
+Xml Json
+json
+Copy code
+    
+{
+  "status": 0,
+  "message": "The code successfully validated"
+}
+
+
+  
+Note
+
+Full description of the response status and message can be found in here:
+
+Errors and statuses
+DLR statuses
+This are the possible statuses a "transaction" in dlr response can be:
+
+Status	Message
+-1	נשלח -ללא אישור מסירה
+0	הגיע ליעד
+1	נכשל
+2	Timeout
+3	נכשל
+4	נכשל סלולר
+5	נכשל
+6	נכשל
+7	אין יתרה
+14	store&forward נכשל סלולר - עבר תהליך של
+15	מספר כשר
+16	אין הרשאת שעת שליחה
+17	חסום להודעות פירסומיות
+18	הודעה לא חוקית
+101	לא הגיע ליעד
+102	הגיע ליעד
+103	פג תוקף
+104	נמחק
+105	לא הגיע ליעד
+106	לא הגיע ליעד
+107	לא הגיע ליעד
+108	נדחה
+109-132	לא הגיע ליעד
+201	נחסם לפי בקשה
+747	מנוי נמצא מחוץ לכיסוי רשת מקומית
+998	אין הרשאה
+999	שגיאה לא ידועה
+Error codes
+Status	Message
+0	*
+1	There was a problem parsing your XML
+2	**
+3	Username or password is incorrect and API token is invalid
+4	Not enough credit
+5	No permission to send SMS at this time
+6	Process failure
+7	You can not send in this format,you need send group in 'bulk', For more - call to Customer Service.
+8	All numbers are on a blocked list
+9	At least one of the destinations is too short or too long
+10	Username or password is incorrect and Expired API token
+11	API token is valid but doesn't match username or if you have newer token you should use it instead
+12	Not enough money
+502	action type not valid
+503	username not exist in your account
+504	current token not found
+510	invalid verify_phone request: no phones to verify
+511	you have not permission for this function
+515	Unverified source For more information see : D4U.co.il/li/pmYra
+714	non valid content in parameter temp_bl
+715	All numbers have been temporarily blocked
+933	Phone or reason not valid
+944	Some of numbers not in blacklist
+955	Campaign already cancel
+966	Campaign already sent
+970	Campaigns was not cancelled. Contact support
+977	Campaign does not belong to customer or Not exist
+980	Invalid link
+981	Error create hash
+986	Add unsubscribe error- invalid value
+988	Contact list are entered not exist
+989	The message is too long or too short OR The campaign name is too long
+990	Amount must be small amount of your credits
+991	The amount must contain only digits
+992	The source is too long or too short
+993	The password is too long or too short
+994	Username already exists
+995	The username is too long or too short
+996	The name is too long or too short
+997	Not a valid command sent
+998	There was an unknown error in the request
+999	Contact support
+NOTE
+
+* Status code 0 means successful transaction. Will contain a positive message according to the API command sent. Example : "SMS will be sent"
+** Status code 2 means that one of the XML fields was missing. The message would say what field is missing.
+
