@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
     <html lang="he" dir="rtl">
       <body className={`${rubik.className} min-h-screen flex flex-col`}>
         <Header />
-        <main className="flex-grow">{children}</main>
+        <main className="flex-1">{children}</main>
         <Footer />
       </body>
     </html>
