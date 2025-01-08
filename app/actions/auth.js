@@ -9,6 +9,12 @@ import { redirect } from "next/navigation";
 
 const FIXED_PASSWORD = "258852";
 
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/");
+}
+
 export async function checkUser(phone) {
   try {
     // בדיקה האם המשתמש קיים
