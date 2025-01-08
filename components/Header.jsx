@@ -14,8 +14,8 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/actions/auth";
-import { supabase } from "@/lib/supabase/supabase";
 import { useRouter } from "next/navigation";
+import createSupaClient from "@/lib/supabase/supabase";
 
 export default function Header() {
   const [session, setSession] = useState(null);
@@ -23,22 +23,25 @@ export default function Header() {
   const router = useRouter();
 
   useEffect(() => {
+    async function checkauth() {
+      const supabase = await createSupaClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        setSession(user);
+      });
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        setRender(!rendered); // מרענן את הקומפוננטה כשיש שינוי בסשן
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
     // בדיקת סשן ראשונית
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
+    checkauth();
     // האזנה לשינויים בסשן
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setRender(!rendered); // מרענן את הקומפוננטה כשיש שינוי בסשן
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [rendered]);
 
   // תפריט למשתמש מחובר
