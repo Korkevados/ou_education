@@ -155,7 +155,6 @@ export async function validateOtp(phone, code) {
       error: error.response?.data?.message || "שגיאה בתהליך האימות",
     };
   }
-  console.log("beforeredirect");
   redirect("/homepage");
 }
 

@@ -9,35 +9,36 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { signOut } from "@/app/actions/auth";
-import { useRouter } from "next/navigation";
 import createSupaClient from "@/lib/supabase/supabase";
 
 export default function Header() {
-  const [session, setSession] = useState(null);
-  const [rendered, setRender] = useState(false);
-  const router = useRouter();
+  const [session, setSession] = useState(false);
 
   useEffect(() => {
-    async function checkauth() {
+    async function checkAuth() {
       const supabase = await createSupaClient();
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        setSession(user);
-      });
+
+      // Initial session check
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setSession(!!user);
+
+      // Listen for auth state changes
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-        setRender(!rendered); // מרענן את הקומפוננטה כשיש שינוי בסשן
+        console.log("Auth state changed:");
+        setSession(!!session);
       });
 
       return () => {
         subscription.unsubscribe();
       };
     }
-    // בדיקת סשן ראשונית
-    checkauth();
-    // האזנה לשינויים בסשן
-  }, [rendered]);
+
+    checkAuth();
+  }, [session]);
 
   // תפריט למשתמש מחובר
   if (session) {
