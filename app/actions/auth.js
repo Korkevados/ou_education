@@ -156,7 +156,7 @@ export async function validateOtp(phone, code) {
     };
   }
   console.log("beforeredirect");
-  redirect("/profile");
+  redirect("/homepage");
 }
 
 export async function getUserDetails() {

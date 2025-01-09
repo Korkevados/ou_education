@@ -8,8 +8,8 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <div className="h-full flex items-center justify-center p-8 bg-sky-50 overflow-y-clip">
-      <div className="max-w-4xl w-full space-y-8 mx-auto">
+    <div className="h-full flex items-center justify-center p-8 bg-sky-50">
+      <div className="flex flex-col max-w-4xl w-full h-full space-y-8 mx-auto">
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-sky-900">ברוכים הבאים ל-OU</h1>

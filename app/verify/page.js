@@ -69,7 +69,7 @@ export default function VerifyPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center p-24 bg-sky-50"
+      className="flex min-h-screen flex-col items-center justify-center md:p-24 p-8 bg-sky-50"
       dir="rtl">
       <div className="max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-lg">
         <div className="text-center">
