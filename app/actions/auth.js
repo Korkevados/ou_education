@@ -16,7 +16,6 @@ export async function signOut() {
 }
 
 export async function checkUser(phone) {
-  console.log(phone);
   try {
     // בדיקה האם המשתמש קיים
     const { data: user, error } = await supabaseAdmin
@@ -28,9 +27,7 @@ export async function checkUser(phone) {
     if (error && error.code !== "PGRST116") {
       throw error;
     }
-    console.log(user);
     if (!user) {
-      console.log("im here");
       return { error: "משתמש לא קיים במערכת" };
     }
 
@@ -111,9 +108,7 @@ export async function validateOtp(phone, code) {
         email: `${phone}@temp.com`,
         password: FIXED_PASSWORD,
       });
-    console.log(session);
     if (!signInError && session) {
-      console.log("skippd");
       // שמירת הסשן בסופאבייס
       //   await supabase.auth.setSession({
       //     access_token: session.access_token,
@@ -155,7 +150,7 @@ export async function validateOtp(phone, code) {
       error: error.response?.data?.message || "שגיאה בתהליך האימות",
     };
   }
-  redirect("/homepage");
+  redirect("/dashboard");
 }
 
 export async function getUserDetails() {
