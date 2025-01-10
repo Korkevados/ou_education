@@ -4,9 +4,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CALENDAR_CONFIG } from "@/lib/config";
 
-const Calendar = ({ selectedDate, onDateSelect }) => {
+const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Calendar helper functions
   const getDaysInMonth = (date) => {
@@ -15,12 +17,6 @@ const Calendar = ({ selectedDate, onDateSelect }) => {
 
   const getFirstDayOfMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  // Dummy events data
-  const events = {
-    "2025-01-15": [{ title: "פגישת צוות", type: "meeting" }],
-    "2025-01-20": [{ title: "הדרכה חדשה", type: "training" }],
   };
 
   // Generate calendar days
@@ -48,11 +44,12 @@ const Calendar = ({ selectedDate, onDateSelect }) => {
       );
       const dateString = date.toISOString().split("T")[0];
       const isSelected =
+        selectedDate &&
         selectedDate.getDate() === day &&
         selectedDate.getMonth() === currentMonth.getMonth() &&
         selectedDate.getFullYear() === currentMonth.getFullYear();
 
-      const dayEvents = events[dateString] || [];
+      const dayEvents = CALENDAR_CONFIG.dummyEvents[dateString] || [];
 
       days.push(
         <div
@@ -61,7 +58,7 @@ const Calendar = ({ selectedDate, onDateSelect }) => {
             "border border-gray-200 w-full pt-[100%] md:pt-[70%] relative cursor-pointer transition-colors",
             isSelected ? "bg-sky-50 border-sky-200" : "hover:bg-gray-50"
           )}
-          onClick={() => onDateSelect(date)}>
+          onClick={() => setSelectedDate(date)}>
           <div className="absolute inset-0 p-2 md:p-1.5">
             <div className="flex justify-between items-start">
               <span
@@ -105,23 +102,6 @@ const Calendar = ({ selectedDate, onDateSelect }) => {
     );
   };
 
-  const monthNames = [
-    "ינואר",
-    "פברואר",
-    "מרץ",
-    "אפריל",
-    "מאי",
-    "יוני",
-    "יולי",
-    "אוגוסט",
-    "ספטמבר",
-    "אוקטובר",
-    "נובמבר",
-    "דצמבר",
-  ];
-
-  const weekDays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-2">
@@ -134,12 +114,13 @@ const Calendar = ({ selectedDate, onDateSelect }) => {
           </Button>
         </div>
         <h3 className="text-lg font-semibold">
-          {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+          {CALENDAR_CONFIG.monthNames[currentMonth.getMonth()]}{" "}
+          {currentMonth.getFullYear()}
         </h3>
       </div>
 
       <div className="flex-1 grid grid-cols-7 gap-1 md:gap-0.5 min-h-0">
-        {weekDays.map((day) => (
+        {CALENDAR_CONFIG.weekDays.map((day) => (
           <div
             key={day}
             className="text-center py-1 md:py-0.5 text-sm font-medium text-gray-700">

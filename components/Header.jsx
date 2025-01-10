@@ -25,21 +25,8 @@ export default function Header() {
         data: { user },
       } = await supabase.auth.getUser();
       setSession(!!user);
-
-      // Listen for auth state changes
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        console.log("Auth state changed:");
-        setSession(!!session);
-      });
       setIsLoading(false);
-
-      return () => {
-        subscription.unsubscribe();
-      };
     }
-
     checkAuth();
   }, [session]);
 
@@ -67,7 +54,9 @@ export default function Header() {
 
               {/* Desktop Navigation */}
               <div className="hidden md:flex items-center gap-6">
-                <Link href="/" className="hover:text-sky-200 transition">
+                <Link
+                  href="/dashboard"
+                  className="hover:text-sky-200 transition">
                   דף הבית
                 </Link>
                 <Link href="/about" className="hover:text-sky-200 transition">
@@ -79,7 +68,7 @@ export default function Header() {
                 <Separator orientation="vertical" className="h-6 bg-sky-700" />
                 <div className="flex items-center gap-6">
                   <Link
-                    href="/profile"
+                    href="/dashboard/profile"
                     className="hover:text-sky-200 transition">
                     פרופיל
                   </Link>
@@ -107,7 +96,7 @@ export default function Header() {
                   </SheetTitle>
                   <div className="flex flex-col gap-4">
                     <Link
-                      href="/"
+                      href="/dashboard"
                       className="text-lg hover:text-sky-200 transition">
                       דף הבית
                     </Link>
@@ -124,7 +113,7 @@ export default function Header() {
                     <Separator className="bg-sky-700" />
                     <div className="flex items-center gap-6">
                       <Link
-                        href="/profile"
+                        href="/dashboard/profile"
                         className="hover:text-sky-200 transition">
                         פרופיל
                       </Link>

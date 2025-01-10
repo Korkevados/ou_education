@@ -158,15 +158,15 @@ export async function getUserDetails() {
     const supabase = await createClient();
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) throw new Error("No session found");
+    if (!user) throw new Error("No session found");
 
-    const phone = session.user.email.replace("@temp.com", "");
+    const phone = user.email.replace("@temp.com", "");
 
     // משתמש בקליינט רגיל במקום באדמין - הפוליסה תטפל בהרשאות
-    const { data: user, error } = await supabase
+    const { data: userData, error } = await supabase
       .from("users")
       .select("*")
       .eq("phone", phone)
@@ -175,12 +175,76 @@ export async function getUserDetails() {
     if (error) throw error;
 
     return {
-      name: user.name,
+      name: userData.name,
       phone: phone,
-      role: user.role,
+      role: userData.role,
     };
   } catch (error) {
     console.error("Error fetching user details:", error);
     throw error;
+  }
+}
+
+export async function tempLogin(phone) {
+  const supabase = await createClient();
+  try {
+    // Check if user exists
+    const { data: user, error: userError } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("phone", phone)
+      .single();
+
+    if (userError && userError.code !== "PGRST116") {
+      throw userError;
+    }
+
+    // If user doesn't exist, create one
+    if (!user) {
+      await supabaseAdmin.from("users").insert([
+        {
+          phone: phone,
+          name: "Temporary User",
+          role: "user",
+        },
+      ]);
+    }
+
+    // Try to sign in
+    const { data: session, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: `${phone}@temp.com`,
+        password: FIXED_PASSWORD,
+      });
+
+    // If sign in fails, create new auth user and try again
+    if (signInError) {
+      await supabaseAdmin.auth.admin.createUser({
+        email: `${phone}@temp.com`,
+        password: FIXED_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          name: "Temporary User",
+          role: "user",
+        },
+      });
+
+      const { data: newSession, error: newSignInError } =
+        await supabase.auth.signInWithPassword({
+          email: `${phone}@temp.com`,
+          password: FIXED_PASSWORD,
+        });
+
+      if (newSignInError) {
+        throw newSignInError;
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in tempLogin:", error);
+    return {
+      error: error.message || "Error during login",
+    };
   }
 }
