@@ -1,7 +1,6 @@
 /** @format */
 
 import { Rubik } from "next/font/google";
-import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./globals.css";
 
@@ -14,12 +13,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="he" dir="rtl">
-      <body
-        className={`${rubik.className} min-h-screen flex flex-col bg-sky-50`}>
-        <main className="flex w-full flex-col flex-1 h-full">{children}</main>
-        <Footer />
-      </body>
+    <html lang="he" dir="rtl" className="h-full">
+      <body className={`${rubik.className} h-full bg-sky-50`}>{children}</body>
     </html>
   );
 }

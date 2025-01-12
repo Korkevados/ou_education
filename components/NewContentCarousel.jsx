@@ -40,7 +40,7 @@ const NewContentCarousel = ({ contents }) => {
           }}>
           {contents.map((content, index) => (
             <div key={content.id} className="w-full flex-shrink-0 p-4">
-              <div className="text-right space-y-3">
+              <div className="text-right">
                 <h3 className="text-xl font-semibold text-gray-900">
                   {content.title}
                 </h3>
@@ -74,7 +74,7 @@ const NewContentCarousel = ({ contents }) => {
         </div>
       </div>
 
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="flex justify-center gap-1 mt-2">
         <Button
           variant="outline"
           size="sm"

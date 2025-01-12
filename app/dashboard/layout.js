@@ -68,10 +68,9 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col overflow-auto no-scrollbar">
       <DashboardHeader />
-
-      <div className="md:px-8 py-4 px-4 bg-sky-50">
+      <div className="flex h-full flex-col md:px-8 py-4 px-4 bg-sky-50">
         <h1 className="text-3xl font-bold mb-8 text-right text-gray-800">
           {greeting}, {userName}
         </h1>
@@ -84,7 +83,7 @@ export default function DashboardLayout({ children }) {
 
           {/* Main Content Area - Full width on mobile */}
           <div
-            className={`w-full md:${LAYOUT_CONFIG.mainContentWidth} flex flex-col flex-1`}>
+            className={`w-full md:${LAYOUT_CONFIG.mainContentWidth} h-full flex flex-col flex-1`}>
             {children}
           </div>
         </div>

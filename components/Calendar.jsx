@@ -56,7 +56,7 @@ const Calendar = () => {
           key={day}
           className={cn(
             "border border-gray-200 w-full pt-[100%] md:pt-[70%] relative cursor-pointer transition-colors",
-            isSelected ? "bg-sky-50 border-sky-200" : "hover:bg-gray-50"
+            isSelected ? "bg-sky-50 border-sky-200" : "hover:bg-gray-100"
           )}
           onClick={() => setSelectedDate(date)}>
           <div className="absolute inset-0 p-2 md:p-1.5">
@@ -103,9 +103,10 @@ const Calendar = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col max-w-full overflow-hidden">
       <div className="flex justify-between items-center mb-2">
-        <div className="flex gap-2">
+        <div className="flex gap-4">
+          <h3 className="text-lg font-semibold mb-6 text-right">לוח חודשי</h3>
           <Button variant="outline" size="sm" onClick={prevMonth}>
             חודש קודם
           </Button>
@@ -119,7 +120,7 @@ const Calendar = () => {
         </h3>
       </div>
 
-      <div className="flex-1 grid grid-cols-7 gap-1 md:gap-0.5 min-h-0">
+      <div className="grid grid-cols-7 gap-1 md:gap-0.5 min-h-0 max-w-full overflow-hidden">
         {CALENDAR_CONFIG.weekDays.map((day) => (
           <div
             key={day}

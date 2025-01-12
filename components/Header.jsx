@@ -35,9 +35,9 @@ export default function Header() {
     return (
       <header className="bg-sky-900 text-white">
         {isLoading ? (
-          <div className="container px-4 py-4" />
+          <div className="px-4 py-4" />
         ) : (
-          <div className="container px-4 py-4">
+          <div className="px-4 py-4">
             <nav className="flex items-center justify-between">
               {/* Logo */}
               <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function Header() {
                     <Button
                       type="submit"
                       variant="destructive"
-                      className="hover:bg-red-600 transition">
+                      className="bg-red-600 transition">
                       התנתק
                     </Button>
                   </form>
@@ -140,9 +140,9 @@ export default function Header() {
   return (
     <header className="bg-sky-900 text-white">
       {isLoading ? (
-        <div className="container px-4 py-4" />
+        <div className="px-4 py-4" />
       ) : (
-        <div className="container px-4 py-4">
+        <div className="px-4 py-4">
           <nav className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-2">

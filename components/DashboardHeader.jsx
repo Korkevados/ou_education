@@ -49,7 +49,7 @@ export default function DashboardHeader() {
             </div>
 
             {/* Desktop Navigation - Hidden on mobile */}
-            <nav className="hidden md:flex items-center space-x-4">
+            <nav className="hidden md:flex items-center space-x-4 bg-red-500 rounded-md scroll-hidden">
               <Button variant="ghost" onClick={() => signOut()}>
                 התנתק
               </Button>
