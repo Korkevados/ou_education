@@ -72,7 +72,7 @@ export default function VerifyPage() {
     <>
       <Header />
       <div
-        className="flex flex-1 h-full flex-col items-center justify-center bg-sky-50"
+        className="flex flex-1 h-full flex-col items-center justify-center bg-sky-50 px-4"
         dir="rtl">
         <div className="flex text-center flex-col items-center justify-center max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-lg">
           <div className="text-center">
