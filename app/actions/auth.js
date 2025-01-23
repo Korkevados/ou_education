@@ -27,6 +27,7 @@ export async function checkUser(phone) {
     if (error && error.code !== "PGRST116") {
       throw error;
     }
+
     if (!user) {
       return { error: "משתמש לא קיים במערכת" };
     }
