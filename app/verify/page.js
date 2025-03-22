@@ -34,7 +34,6 @@ export default function VerifyPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
       const result = await checkUser(phone);
       if (result.error) {
@@ -59,6 +58,9 @@ export default function VerifyPage() {
 
       if (result?.error) {
         setError(result.error);
+      } else {
+        console.log("result", result);
+        setLoading(false);
       }
       // אין צורך לטפל בהצלחה כי הניווט מתבצע בצד השרת
     } catch (error) {

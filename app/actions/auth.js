@@ -16,9 +16,10 @@ export async function signOut() {
 }
 
 export async function checkUser(phone) {
+  const supabase = await supabaseAdmin();
   try {
     // בדיקה האם המשתמש קיים
-    const { data: user, error } = await supabaseAdmin
+    const { data: user, error } = await supabase
       .from("users")
       .select("*")
       .eq("phone", phone)
@@ -91,9 +92,9 @@ export async function validateOtp(phone, code) {
     if (otpResponse.status !== 0) {
       return { error: "קוד לא תקין" };
     }
-
+    const supabaseadmin = await supabaseAdmin();
     // קבלת פרטי המשתמש
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseadmin
       .from("users")
       .select("*")
       .eq("phone", phone)
@@ -190,7 +191,7 @@ export async function tempLogin(phone) {
   const supabase = await createClient();
   try {
     // Check if user exists
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("*")
       .eq("phone", phone)

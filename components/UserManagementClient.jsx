@@ -1,6 +1,6 @@
 /** @format */
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { MoreVertical, Plus, ChevronDown } from "lucide-react";
 import UserForm from "./UserForm";
+import { createUser, updateUser, deleteUser } from "@/app/actions/users";
+import { toast } from "sonner";
 
 // Calculate items per page based on viewport height to avoid scrolling
 const ITEMS_PER_PAGE = 6; // Adjusted for typical screen sizes
@@ -39,6 +41,7 @@ export default function UserManagementClient({ initialUsers }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState("name");
   const [selectedRole, setSelectedRole] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filter and paginate users
   const filteredUsers = useMemo(() => {
@@ -64,42 +67,86 @@ export default function UserManagementClient({ initialUsers }) {
   );
 
   const handleAddUser = async (userData) => {
-    // TODO: Implement Supabase create user
-    // const { data, error } = await supabase
-    //   .from('users')
-    //   .insert([userData])
+    try {
+      setIsLoading(true);
+      console.log("handleAddUser called with:", userData);
 
-    // For now, just update the local state
-    setUsers([...users, { id: Date.now().toString(), ...userData }]);
-    setIsAddUserOpen(false);
+      // Check if using "NEW" as activity center
+      if (userData.activityCenter === "NEW") {
+        console.error(
+          "Error: Activity center is set to 'NEW'. This should be replaced with an actual center name."
+        );
+        toast.error("יש להזין שם מרכז פעילות");
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await createUser(userData);
+      console.log("createUser response:", { data, error });
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      // Add the new user to the list
+      setUsers([...users, { ...userData, id: data.id }]);
+      setIsAddUserOpen(false);
+      toast.success("המשתמש נוצר בהצלחה");
+    } catch (error) {
+      console.error("Error adding user:", error);
+      toast.error("שגיאה ביצירת המשתמש");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditUser = async (userData) => {
-    // TODO: Implement Supabase update user
-    // const { data, error } = await supabase
-    //   .from('users')
-    //   .update(userData)
-    //   .eq('id', userData.id)
+    try {
+      setIsLoading(true);
+      const { error } = await updateUser(editingUser.id, userData);
 
-    // For now, just update the local state
-    setUsers(
-      users.map((user) =>
-        user.id === editingUser.id ? { ...user, ...userData } : user
-      )
-    );
-    setIsAddUserOpen(false);
-    setEditingUser(null);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      // Update the user in the list
+      setUsers(
+        users.map((user) =>
+          user.id === editingUser.id ? { ...user, ...userData } : user
+        )
+      );
+      setIsAddUserOpen(false);
+      setEditingUser(null);
+      toast.success("המשתמש עודכן בהצלחה");
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("שגיאה בעדכון המשתמש");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeleteUser = async (userId) => {
-    // TODO: Implement Supabase delete user
-    // const { data, error } = await supabase
-    //   .from('users')
-    //   .delete()
-    //   .eq('id', userId)
+    try {
+      setIsLoading(true);
+      const { error } = await deleteUser(userId);
 
-    // For now, just update the local state
-    setUsers(users.filter((user) => user.id !== userId));
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      // Remove the user from the list
+      setUsers(users.filter((user) => user.id !== userId));
+      toast.success("המשתמש נמחק בהצלחה");
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("שגיאה במחיקת המשתמש");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -113,7 +160,7 @@ export default function UserManagementClient({ initialUsers }) {
         <h1 className="text-2xl font-bold">ניהול משתמשים</h1>
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={isLoading}>
               <Plus className="mr-2 h-4 w-4" />
               הוסף משתמש
             </Button>
@@ -128,6 +175,7 @@ export default function UserManagementClient({ initialUsers }) {
               user={editingUser}
               onSubmit={editingUser ? handleEditUser : handleAddUser}
               onCancel={handleCloseDialog}
+              isLoading={isLoading}
             />
           </DialogContent>
         </Dialog>
@@ -145,7 +193,7 @@ export default function UserManagementClient({ initialUsers }) {
           <Button
             variant="outline"
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}>
+            disabled={currentPage === 1 || isLoading}>
             הקודם
           </Button>
           <span className="py-2 px-4">
@@ -154,7 +202,7 @@ export default function UserManagementClient({ initialUsers }) {
           <Button
             variant="outline"
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}>
+            disabled={currentPage === totalPages || isLoading}>
             הבא
           </Button>
         </div>
@@ -198,7 +246,7 @@ export default function UserManagementClient({ initialUsers }) {
           <TableBody>
             {paginatedUsers.map((user) => (
               <TableRow
-                key={user.id}
+                key={user.phone}
                 className="h-12 hover:bg-sky-100 transition-colors">
                 <TableCell className="text-center">{user.name}</TableCell>
                 <TableCell className="text-center">{user.role}</TableCell>
@@ -209,7 +257,10 @@ export default function UserManagementClient({ initialUsers }) {
                 <TableCell className="text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        disabled={isLoading}>
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
