@@ -30,8 +30,10 @@ export default function DashboardHeader() {
     let items = [...NAVIGATION_CONFIG.base];
     if (userRole === "ADMIN") {
       items = [...items, ...NAVIGATION_CONFIG.admin];
-    } else if (userRole === "instructor") {
+    } else if (userRole === "GUIDE") {
       items = [...items, ...NAVIGATION_CONFIG.instructor];
+    } else if (userRole === "TRAINING_MANAGER") {
+      items = [...items, ...NAVIGATION_CONFIG.training_manager];
     }
     return items;
   };

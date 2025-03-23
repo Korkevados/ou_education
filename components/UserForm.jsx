@@ -152,17 +152,17 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }) {
                   <SelectItem
                     className="hover:bg-slate-100 focus:bg-slate-100 text-right"
                     value="GUIDE">
-                    Guide
+                    מדריך
                   </SelectItem>
                   <SelectItem
                     className="hover:bg-slate-100 focus:bg-slate-100 text-right"
-                    value="MANAGER">
-                    Manager
+                    value="TRAINING_MANAGER">
+                    מנהל הדרכה
                   </SelectItem>
                   <SelectItem
                     className="hover:bg-slate-100 focus:bg-slate-100 text-right"
                     value="ADMIN">
-                    Admin
+                    מנהל כללי
                   </SelectItem>
                 </SelectContent>
               </Select>

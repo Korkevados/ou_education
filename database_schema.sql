@@ -152,7 +152,7 @@ CREATE TABLE activity_materials (
 
 -- Insert default target audiences (grades)
 INSERT INTO target_audiences (grade) VALUES 
-('7th'), ('8th'), ('9th'), ('10th'), ('11th'), ('12th');
+('ז'), ('ח'), ('ט'), ('י'), ('יא'), ('יב');
 
 -- Create initial system admin user (add this once you have the initial system admin details)
 -- INSERT INTO users (full_name, phone, email, supabase_id, user_type)

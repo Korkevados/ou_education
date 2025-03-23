@@ -284,11 +284,6 @@ export default function ProfilePage() {
                   <p className="font-medium">{user.activityCenter}</p>
                 </div>
               )}
-
-              <div className="space-y-2">
-                <p className="text-gray-600">מרכז פעילות</p>
-                <p className="font-medium">שדרות</p>
-              </div>
             </div>
           </div>
         </div>
