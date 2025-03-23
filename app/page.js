@@ -34,7 +34,7 @@ export default function Home() {
             <Button
               size="default"
               className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700">
-              הצטרפו אלינו
+              !!!!! הצטרפו אלינו
             </Button>
             <Button
               size="default"
