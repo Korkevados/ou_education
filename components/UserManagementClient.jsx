@@ -26,8 +26,21 @@ import {
 } from "@/components/ui/dialog";
 import { MoreVertical, Plus, ChevronDown } from "lucide-react";
 import UserForm from "./UserForm";
-import { createUser, updateUser, deleteUser } from "@/app/actions/users";
+import {
+  createUser,
+  updateUser,
+  activateUser,
+  deactivateUser,
+  getUsers,
+} from "@/app/actions/users";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Calculate items per page based on viewport height to avoid scrolling
 const ITEMS_PER_PAGE = 6; // Adjusted for typical screen sizes
@@ -39,26 +52,37 @@ export default function UserManagementClient({ initialUsers }) {
   const [editingUser, setEditingUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterBy, setFilterBy] = useState("name");
   const [selectedRole, setSelectedRole] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Filter and paginate users
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const searchLower = searchTerm.toLowerCase();
-      const roleMatch = selectedRole ? user.role === selectedRole : true;
-
-      const searchMatch =
-        filterBy === "name"
-          ? user.name.toLowerCase().includes(searchLower)
-          : filterBy === "phone"
-          ? user.phone.includes(searchTerm)
+      const roleMatch = selectedRole ? user.user_type === selectedRole : true;
+      const statusMatch =
+        selectedStatus === "active"
+          ? user.is_active
+          : selectedStatus === "inactive"
+          ? !user.is_active
           : true;
 
-      return searchMatch && roleMatch;
+      let searchMatch = true;
+      if (searchTerm) {
+        // Clean up the search term and phone number for comparison
+        const cleanSearchTerm = searchTerm.replace(/[-\s]/g, "");
+        const cleanPhone = user.phone.replace(/[-\s]/g, "");
+
+        // Check if matches either name or phone
+        searchMatch =
+          user.full_name.toLowerCase().includes(searchLower) ||
+          cleanPhone.includes(cleanSearchTerm);
+      }
+
+      return searchMatch && roleMatch && statusMatch;
     });
-  }, [users, searchTerm, filterBy, selectedRole]);
+  }, [users, searchTerm, selectedRole, selectedStatus]);
 
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
   const paginatedUsers = filteredUsers.slice(
@@ -78,24 +102,35 @@ export default function UserManagementClient({ initialUsers }) {
         );
         toast.error("יש להזין שם מרכז פעילות");
         setIsLoading(false);
-        return;
+        return { error: "יש להזין שם מרכז פעילות" };
       }
 
       const { data, error } = await createUser(userData);
       console.log("createUser response:", { data, error });
 
       if (error) {
+        console.error("Server returned an error:", error);
         toast.error(error);
-        return;
+        return { error };
       }
 
-      // Add the new user to the list
-      setUsers([...users, { ...userData, id: data.id }]);
+      // Fetch updated users list
+      const { data: updatedUsers, error: fetchError } = await getUsers();
+      if (fetchError) {
+        console.error("Error fetching updated users:", fetchError);
+        toast.error("נוצר משתמש חדש אך לא ניתן לרענן את הרשימה");
+      } else {
+        setUsers(updatedUsers);
+      }
+
       setIsAddUserOpen(false);
       toast.success("המשתמש נוצר בהצלחה");
+      return { success: true };
     } catch (error) {
-      console.error("Error adding user:", error);
-      toast.error("שגיאה ביצירת המשתמש");
+      console.error("Exception in handleAddUser:", error);
+      const errorMessage = error.message || "שגיאה ביצירת המשתמש";
+      toast.error(errorMessage);
+      return { error: errorMessage };
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +139,52 @@ export default function UserManagementClient({ initialUsers }) {
   const handleEditUser = async (userData) => {
     try {
       setIsLoading(true);
-      const { error } = await updateUser(editingUser.id, userData);
+      console.log("handleEditUser called with:", userData);
+
+      const { data, error } = await updateUser(editingUser.id, userData);
+      console.log("updateUser response:", { data, error });
+
+      if (error) {
+        console.error("Server returned an error:", error);
+        toast.error(error);
+        return { error };
+      }
+
+      // Update the user in the list
+      setUsers(
+        users.map((user) =>
+          user.id === editingUser.id
+            ? {
+                ...user,
+                full_name: userData.name,
+                phone: userData.phone,
+                email: userData.email,
+                user_type: userData.role,
+                is_active: userData.is_active,
+                center_name: userData.activityCenter,
+              }
+            : user
+        )
+      );
+
+      setIsAddUserOpen(false);
+      setEditingUser(null);
+      toast.success("המשתמש עודכן בהצלחה");
+      return { success: true };
+    } catch (error) {
+      console.error("Exception in handleEditUser:", error);
+      const errorMessage = error.message || "שגיאה בעדכון המשתמש";
+      toast.error(errorMessage);
+      return { error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleActivateUser = async (userId) => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await activateUser(userId);
 
       if (error) {
         toast.error(error);
@@ -114,36 +194,50 @@ export default function UserManagementClient({ initialUsers }) {
       // Update the user in the list
       setUsers(
         users.map((user) =>
-          user.id === editingUser.id ? { ...user, ...userData } : user
+          user.id === userId
+            ? {
+                ...user,
+                is_active: true,
+                activation_date: new Date().toISOString(),
+              }
+            : user
         )
       );
-      setIsAddUserOpen(false);
-      setEditingUser(null);
-      toast.success("המשתמש עודכן בהצלחה");
+      toast.success("המשתמש אושר והופעל בהצלחה");
     } catch (error) {
-      console.error("Error updating user:", error);
-      toast.error("שגיאה בעדכון המשתמש");
+      console.error("Error activating user:", error);
+      toast.error("שגיאה באישור המשתמש");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteUser = async (userId) => {
+  const handleDeactivateUser = async (userId) => {
     try {
       setIsLoading(true);
-      const { error } = await deleteUser(userId);
+      const { data, error } = await deactivateUser(userId);
 
       if (error) {
         toast.error(error);
         return;
       }
 
-      // Remove the user from the list
-      setUsers(users.filter((user) => user.id !== userId));
-      toast.success("המשתמש נמחק בהצלחה");
+      // Update the user in the list
+      setUsers(
+        users.map((user) =>
+          user.id === userId
+            ? {
+                ...user,
+                is_active: false,
+                updated_at: new Date().toISOString(),
+              }
+            : user
+        )
+      );
+      toast.success("המשתמש הושבת בהצלחה");
     } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("שגיאה במחיקת המשתמש");
+      console.error("Error deactivating user:", error);
+      toast.error("שגיאה בהשבתת המשתמש");
     } finally {
       setIsLoading(false);
     }
@@ -154,10 +248,78 @@ export default function UserManagementClient({ initialUsers }) {
     setEditingUser(null);
   };
 
+  // Handle form submission
+  const handleFormSubmit = async (formData) => {
+    setIsLoading(true);
+    console.log("UserManagement: Form data received:", formData);
+
+    try {
+      let result;
+
+      if (editingUser) {
+        // Update existing user
+        console.log(
+          `UserManagement: Updating user ${editingUser.id}:`,
+          formData
+        );
+        result = await updateUser(editingUser.id, formData);
+      } else {
+        // Create new user
+        console.log("UserManagement: Creating new user:", formData);
+        result = await createUser(formData);
+      }
+
+      console.log("UserManagement: Server response:", result);
+
+      // Check for errors in the response
+      if (result && result.error) {
+        console.error("UserManagement: Error from server:", result.error);
+        setIsLoading(false);
+        return { error: result.error }; // Return error to form
+      }
+
+      // Refresh user list on success
+      setUsers(
+        users.map((user) =>
+          user.id === result.id
+            ? {
+                ...user,
+                full_name: formData.name,
+                phone: formData.phone,
+                email: formData.email,
+                user_type: formData.role,
+                is_active: formData.is_active,
+                center_name: formData.activityCenter,
+              }
+            : user
+        )
+      );
+      // Close dialog only on success
+      setIsAddUserOpen(false);
+      setEditingUser(null);
+      setIsLoading(false);
+      toast.success("המשתמש עודכן בהצלחה");
+      return true; // Indicate success
+    } catch (error) {
+      console.error("UserManagement: Exception during submission:", error);
+      setIsLoading(false);
+      const errorMessage = error.message || "אירעה שגיאה. נסו שנית מאוחר יותר.";
+      toast.error(errorMessage);
+      return { error: errorMessage }; // Return error to form
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex justify-between items-center mb-2">
-        <h1 className="text-2xl font-bold">ניהול משתמשים</h1>
+        <div className="flex items-baseline gap-4">
+          <h1 className="text-2xl font-bold">ניהול משתמשים</h1>
+          <span className="text-sm text-gray-500">
+            (סה"כ: {users.length} | פעילים:{" "}
+            {users.filter((u) => u.is_active).length} | לא פעילים:{" "}
+            {users.filter((u) => !u.is_active).length})
+          </span>
+        </div>
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
             <Button disabled={isLoading}>
@@ -173,7 +335,7 @@ export default function UserManagementClient({ initialUsers }) {
             </DialogHeader>
             <UserForm
               user={editingUser}
-              onSubmit={editingUser ? handleEditUser : handleAddUser}
+              onSubmit={handleFormSubmit}
               onCancel={handleCloseDialog}
               isLoading={isLoading}
             />
@@ -182,12 +344,15 @@ export default function UserManagementClient({ initialUsers }) {
       </div>
 
       <div className="flex-row justify-between shrink-0 mb-2 flex gap-4">
-        <Input
-          placeholder="חיפוש לפי שם או מספר פלאפון..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex gap-2 items-center">
+          <Input
+            placeholder="חיפוש לפי שם או מספר טלפון..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm text-right"
+            dir="rtl"
+          />
+        </div>
 
         <div className="shrink-0 gap-2 mt-2 bg-sky-50 rounded-md border">
           <Button
@@ -238,6 +403,35 @@ export default function UserManagementClient({ initialUsers }) {
               </TableHead>
               <TableHead className="text-center h-11">מרכז פעילות</TableHead>
               <TableHead className="text-center h-11">מספר טלפון</TableHead>
+              <TableHead className="text-center h-11">
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center justify-center w-full">
+                    {selectedStatus === "active"
+                      ? "פעילים"
+                      : selectedStatus === "inactive"
+                      ? "לא פעילים"
+                      : "סטטוס"}{" "}
+                    <ChevronDown className="mr-2 h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      className="bg-sky-50 hover:bg-slate-400 items-left"
+                      onClick={() => setSelectedStatus("")}>
+                      הכל
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSelectedStatus("active")}
+                      className="bg-sky-50 hover:bg-slate-400">
+                      פעילים
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSelectedStatus("inactive")}
+                      className="bg-sky-50 hover:bg-slate-400">
+                      לא פעילים
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableHead>
               <TableHead className="w-[70px] text-center h-11">
                 פעולות
               </TableHead>
@@ -246,14 +440,29 @@ export default function UserManagementClient({ initialUsers }) {
           <TableBody>
             {paginatedUsers.map((user) => (
               <TableRow
-                key={user.phone}
-                className="h-12 hover:bg-sky-100 transition-colors">
-                <TableCell className="text-center">{user.name}</TableCell>
-                <TableCell className="text-center">{user.role}</TableCell>
+                key={user.id}
+                className={`h-12 hover:bg-sky-100 transition-colors ${
+                  !user.is_active ? "bg-gray-100 text-gray-500" : ""
+                }`}>
+                <TableCell className="text-center">{user.full_name}</TableCell>
+                <TableCell className="text-center">{user.user_type}</TableCell>
                 <TableCell className="text-center">
-                  {user.activityCenter}
+                  {user.center_id
+                    ? user.center_name || "מרכז פעילות"
+                    : "ללא מרכז"}
                 </TableCell>
                 <TableCell className="text-center">{user.phone}</TableCell>
+                <TableCell className="text-center">
+                  {user.is_active ? (
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                      פעיל
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                      לא פעיל
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -264,19 +473,31 @@ export default function UserManagementClient({ initialUsers }) {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent
+                      align="start"
+                      side="right"
+                      className="bg-white border shadow-lg min-w-[120px]">
                       <DropdownMenuItem
                         onClick={() => {
                           setEditingUser(user);
                           setIsAddUserOpen(true);
-                        }}>
+                        }}
+                        className="text-right hover:bg-slate-100 cursor-pointer">
                         ערוך
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDeleteUser(user.id)}>
-                        מחק
-                      </DropdownMenuItem>
+                      {!user.is_active ? (
+                        <DropdownMenuItem
+                          className="text-right text-green-600 hover:bg-slate-100 cursor-pointer"
+                          onClick={() => handleActivateUser(user.id)}>
+                          אשר משתמש
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          className="text-right text-red-600 hover:bg-slate-100 cursor-pointer"
+                          onClick={() => handleDeactivateUser(user.id)}>
+                          השבת משתמש
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -288,6 +509,7 @@ export default function UserManagementClient({ initialUsers }) {
                 .fill(0)
                 .map((_, index) => (
                   <TableRow key={`empty-${index}`} className="h-12">
+                    <TableCell className="text-center">&nbsp;</TableCell>
                     <TableCell className="text-center">&nbsp;</TableCell>
                     <TableCell className="text-center">&nbsp;</TableCell>
                     <TableCell className="text-center">&nbsp;</TableCell>

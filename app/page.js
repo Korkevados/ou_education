@@ -33,8 +33,9 @@ export default function Home() {
           <div className="flex flex-row sm:flex-row gap-3 justify-center items-center">
             <Button
               size="default"
+              onClick={() => router.push("/register")}
               className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700">
-              !!!!! הצטרפו אלינו
+              הצטרפו אלינו
             </Button>
             <Button
               size="default"

@@ -72,7 +72,7 @@ export default function VerifyPage() {
         <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-md">
           <div className="flex justify-center mb-6">
             <Image
-              src="/logo.png"
+              src="/images/ouisrael_logo.png"
               alt="לוגו"
               width={120}
               height={120}
@@ -95,7 +95,7 @@ export default function VerifyPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1">
+                className="block text-lg font-medium text-gray-700 mb-1">
                 אימייל
               </label>
               <input
@@ -113,7 +113,7 @@ export default function VerifyPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1">
+                className="block text-lg font-medium text-gray-700 mb-1">
                 סיסמא
               </label>
               <div className="relative">
@@ -122,7 +122,7 @@ export default function VerifyPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-8 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="הכנס סיסמא"
                   dir="ltr"
                   disabled={isLoading}
@@ -193,11 +193,11 @@ export default function VerifyPage() {
             </div>
           )}
 
-          {debug && (
+          {/* {debug && (
             <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-500 dir-ltr">
               <p>{debug}</p>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </>

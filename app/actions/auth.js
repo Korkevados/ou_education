@@ -9,10 +9,120 @@ import { redirect } from "next/navigation";
 
 const FIXED_PASSWORD = "258852";
 
+// פונקציית עזר לבדיקת תקינות הסיסמא
+function validatePassword(password) {
+  // בדיקה שהסיסמא לפחות 8 תווים
+  if (password.length < 8) {
+    return { isValid: false, error: "הסיסמא חייבת להכיל לפחות 8 תווים" };
+  }
+
+  // בדיקה שיש לפחות אות גדולה אחת באנגלית
+  if (!/[A-Z]/.test(password)) {
+    return {
+      isValid: false,
+      error: "הסיסמא חייבת להכיל לפחות אות גדולה אחת באנגלית",
+    };
+  }
+
+  // בדיקה שיש לפחות אות קטנה אחת באנגלית
+  if (!/[a-z]/.test(password)) {
+    return {
+      isValid: false,
+      error: "הסיסמא חייבת להכיל לפחות אות קטנה אחת באנגלית",
+    };
+  }
+
+  return { isValid: true };
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+export async function registerGuide({ fullName, phone, email, password }) {
+  console.log("Starting guide registration process");
+
+  try {
+    // בדיקת תקינות הסיסמא
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return { error: passwordValidation.error };
+    }
+
+    const supabase = await createClient();
+    const supabaseadmin = await supabaseAdmin();
+
+    // בדיקה אם המשתמש כבר קיים לפי אימייל
+    const { data: existingUser, error: checkError } = await supabaseadmin
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (existingUser) {
+      console.log("User already exists with this email");
+      return { error: "משתמש עם אימייל זה כבר קיים במערכת" };
+    }
+
+    // בדיקה אם המשתמש כבר קיים לפי טלפון
+    const { data: existingPhone, error: phoneError } = await supabaseadmin
+      .from("users")
+      .select("*")
+      .eq("phone", phone)
+      .single();
+
+    if (existingPhone) {
+      console.log("User already exists with this phone");
+      return { error: "משתמש עם מספר טלפון זה כבר קיים במערכת" };
+    }
+
+    // יצירת משתמש חדש בסופאבייס אוט
+    const { data: authUser, error: createError } =
+      await supabaseadmin.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true,
+      });
+
+    if (createError) {
+      console.error("Error creating auth user:", createError);
+      return { error: createError.message };
+    }
+
+    console.log("Auth user created successfully");
+
+    // יצירת רשומת משתמש בטבלת users
+    const { data: newUser, error: userError } = await supabaseadmin
+      .from("users")
+      .insert([
+        {
+          full_name: fullName,
+          phone: phone,
+          email: email,
+          user_type: "GUIDE",
+          supabase_id: authUser.user.id,
+          is_active: false, // משתמש חדש מתחיל כלא פעיל
+          position: "GUIDE", // הוספת ערך ברירת מחדל לposition
+        },
+      ])
+      .select()
+      .single();
+
+    if (userError) {
+      console.error("Error creating user record:", userError);
+      // מחיקת המשתמש מהאוט במקרה של שגיאה
+      await supabaseadmin.auth.admin.deleteUser(authUser.user.id);
+      return { error: "שגיאה ביצירת המשתמש" };
+    }
+
+    console.log("Guide registered successfully, waiting for admin approval");
+    return { success: true };
+  } catch (error) {
+    console.error("Unexpected error in registerGuide:", error);
+    return { error: "שגיאה בלתי צפויה בתהליך ההרשמה" };
+  }
 }
 
 export async function loginWithEmail(email, password) {
@@ -20,6 +130,7 @@ export async function loginWithEmail(email, password) {
 
   const supabase = await createClient();
   try {
+    // בדיקת אימות פרטי התחברות
     const { data: session, error: signInError } =
       await supabase.auth.signInWithPassword({
         email: email,
@@ -29,6 +140,7 @@ export async function loginWithEmail(email, password) {
     if (signInError) {
       console.log("שגיאת התחברות:", signInError);
 
+      // מחזירים הודעות שגיאה ידידותיות למשתמש
       if (signInError.message.includes("Invalid login credentials")) {
         return { error: "אימייל או סיסמא שגויים" };
       }
@@ -41,20 +153,23 @@ export async function loginWithEmail(email, password) {
       return { error: "שגיאה בתהליך ההתחברות" };
     }
 
-    console.log("התחברות בוצעה בהצלחה");
+    console.log("התחברות בוצעה בהצלחה, בודק סטטוס משתמש");
 
+    // בדיקה האם המשתמש קיים ופעיל בטבלת users
     const supabaseadmin = await supabaseAdmin();
-    const { data: userData, error: userError } = await supabaseadmin
+    let { data: userData, error: userError } = await supabaseadmin
       .from("users")
       .select("*")
       .eq("email", email)
       .single();
 
+    // אם יש שגיאה שלא קשורה לכך שלא נמצאו שורות
     if (userError && userError.code !== "PGRST116") {
       console.log("שגיאה בשליפת נתוני משתמש:", userError);
       throw userError;
     }
 
+    // אם המשתמש לא קיים בטבלת users, נחפש אותו לפי supabase_id
     if (!userData) {
       const { data: userById, error: userByIdError } = await supabaseadmin
         .from("users")
@@ -70,6 +185,14 @@ export async function loginWithEmail(email, password) {
       if (!userById) {
         return { error: "משתמש לא קיים במערכת" };
       }
+
+      userData = userById;
+    }
+
+    // בדיקה האם המשתמש פעיל
+    if (!userData.is_active) {
+      console.log("משתמש לא פעיל:", userData.email);
+      return { error: "החשבון שלך עדיין לא אושר על ידי מנהל המערכת" };
     }
   } catch (error) {
     console.error("Error in loginWithEmail:", error);
