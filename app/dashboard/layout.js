@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import DashboardHeader from "@/components/DashboardHeader";
 import DashboardNav from "@/components/DashboardNav";
 import { GREETINGS_CONFIG, LAYOUT_CONFIG } from "@/lib/config";
-import { getUserDetails } from "@/app/actions/auth";
+import getUserDetails from "@/app/actions/auth";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function DashboardLayout({ children }) {
@@ -66,6 +66,16 @@ export default function DashboardLayout({ children }) {
       </div>
     );
   }
+
+  // If not a protected route, continue normally
+  const mainLayoutRoutes = [
+    "/dashboard",
+    "/dashboard/content",
+    "/dashboard/content/new",
+    "/dashboard/content/explore", // נתיב חדש
+    "/dashboard/profile",
+    // Add more paths as needed
+  ];
 
   return (
     <div className="flex h-full w-full flex-col overflow-auto no-scrollbar">

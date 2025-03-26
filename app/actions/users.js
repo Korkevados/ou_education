@@ -3,7 +3,7 @@
 
 import createClient from "@/lib/supabase/supabase-server";
 import supabaseAdmin from "@/lib/supabase/supabase-admin";
-import { getUserDetails } from "@/app/actions/auth";
+import getUserDetails from "@/app/actions/auth";
 
 /**
  * Fetches all users with their center information

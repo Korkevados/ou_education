@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import * as Icons from "lucide-react";
 import { NAVIGATION_CONFIG } from "@/lib/config";
-import { getUserDetails } from "@/app/actions/auth";
+import getUserDetails from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 

@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUserDetails } from "@/app/actions/auth";
+import getUserDetails from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,

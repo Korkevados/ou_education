@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Calendar from "@/components/Calendar";
 import NewContentCarousel from "@/components/NewContentCarousel";
+import Link from "next/link";
 
 // Dummy data for new content
 const dummyNewContent = [
@@ -52,9 +53,14 @@ export default function Homepage() {
         <div className="lg:w-1/3 flex flex-col gap-8">
           {/* New Content Carousel */}
           <div className="bg-white rounded-lg lg:max-h-[55%] shadow-md p-6 flex-1">
-            <h2 className="text-2xl font-semibold mb-2 text-right">
-              תכנים חדשים
-            </h2>
+            <div className="flex justify-between items-center mb-2">
+              <Link
+                href="/dashboard/content/explore"
+                className="text-sm text-blue-500 hover:underline">
+                גלה עוד תכנים
+              </Link>
+              <h2 className="text-2xl font-semibold text-right">תכנים חדשים</h2>
+            </div>
             <NewContentCarousel contents={dummyNewContent} />
           </div>
 

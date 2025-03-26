@@ -1,6 +1,7 @@
 /** @format */
 
-import { getUserDetails } from "@/app/actions/auth";
+"use client";
+import getUserDetails from "@/app/actions/auth";
 import { getUsers } from "@/app/actions/users";
 import UserManagementClient from "@/components/UserManagementClient";
 import { redirect } from "next/navigation";

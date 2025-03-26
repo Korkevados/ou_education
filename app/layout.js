@@ -2,6 +2,7 @@
 
 import { Rubik } from "next/font/google";
 import Footer from "../components/Footer";
+import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
 const rubik = Rubik({ subsets: ["hebrew"] });
@@ -14,7 +15,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="he" dir="rtl" className="h-full">
-      <body className={`${rubik.className} h-full bg-sky-50`}>{children}</body>
+      <body className={`${rubik.className} h-full bg-sky-50`}>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

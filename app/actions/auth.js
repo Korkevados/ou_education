@@ -341,7 +341,7 @@ export async function validateOtp(phone, code) {
   redirect("/dashboard");
 }
 
-export async function getUserDetails() {
+export default async function getUserDetails() {
   try {
     const supabase = await createClient();
 
