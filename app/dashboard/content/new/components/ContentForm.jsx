@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload, PlusCircle } from "lucide-react";
+import { Loader2, Upload, PlusCircle, Image as ImageIcon } from "lucide-react";
 import ReactSelect from "react-select";
+import Image from "next/image";
 
 export default function ContentForm({
   formData,
@@ -21,10 +22,12 @@ export default function ContentForm({
   handleInputChange,
   handleSelectChange,
   handleFileChange,
+  handleImageChange,
   handleSubmit,
   isLoading,
   errors,
   file,
+  imageFile,
   isNewMainTopic,
   setIsNewMainTopic,
   newTopicName,
@@ -147,11 +150,19 @@ export default function ContentForm({
         )}
       </div>
 
-      <FileUploader
-        handleFileChange={handleFileChange}
-        file={file}
-        errors={errors}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FileUploader
+          handleFileChange={handleFileChange}
+          file={file}
+          errors={errors}
+        />
+
+        <ImageUploader
+          handleImageChange={handleImageChange}
+          imageFile={imageFile}
+          errors={errors}
+        />
+      </div>
 
       <div className="pt-4 flex justify-end space-x-4">
         <Button
@@ -290,6 +301,70 @@ function FileUploader({ handleFileChange, file, errors }) {
       {file && (
         <p className="text-green-600 text-sm">
           {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ImageUploader({ handleImageChange, imageFile, errors }) {
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // עדכון תצוגה מקדימה כאשר משתנה התמונה
+  const handleChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreviewUrl(null);
+    }
+
+    handleImageChange(e);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor="image" className="block text-lg font-medium">
+        תמונת תצוגה מקדימה <span className="text-gray-500">(אופציונלי)</span>
+      </label>
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center ${
+          errors.image ? "border-red-500" : "border-gray-300"
+        }`}>
+        <Input
+          id="image"
+          type="file"
+          onChange={handleChange}
+          className="hidden"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+        />
+        <label htmlFor="image" className="cursor-pointer block">
+          {previewUrl ? (
+            <div className="relative w-32 h-32 mx-auto">
+              <Image
+                src={previewUrl}
+                alt="תצוגה מקדימה"
+                fill
+                className="object-contain rounded-md"
+              />
+            </div>
+          ) : (
+            <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+          )}
+          <p className="mt-2 text-sm font-medium">
+            {imageFile ? imageFile.name : "לחץ או גרור תמונה לכאן"}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">JPG, PNG או GIF עד 2MB</p>
+        </label>
+      </div>
+      {errors.image && <p className="text-red-500 text-sm">{errors.image}</p>}
+      {imageFile && !previewUrl && (
+        <p className="text-green-600 text-sm">
+          {imageFile.name} ({(imageFile.size / (1024 * 1024)).toFixed(2)} MB)
         </p>
       )}
     </div>

@@ -9,8 +9,19 @@ export const ALLOWED_FILE_TYPES = [
   "application/vnd.ms-powerpoint", // PPT
 ];
 
+// Allowed image types
+export const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg", // JPG/JPEG
+  "image/png", // PNG
+  "image/gif", // GIF
+  "image/webp", // WebP
+];
+
 // Max file size in MB
 export const MAX_FILE_SIZE_MB = 50;
+
+// Max image size in MB
+export const MAX_IMAGE_SIZE_MB = 2;
 
 /**
  * Validates the content form data
@@ -19,6 +30,7 @@ export const MAX_FILE_SIZE_MB = 50;
  * @param {Array} selectedTargetAudiences - The selected target audiences
  * @param {boolean} isNewMainTopic - Whether a new main topic is being created
  * @param {string} newTopicName - The name of the new topic
+ * @param {File} imageFile - The optional image file to upload
  * @returns {Object} - An object with validation errors, if any
  */
 export function validateForm(
@@ -26,7 +38,8 @@ export function validateForm(
   file,
   selectedTargetAudiences,
   isNewMainTopic,
-  newTopicName
+  newTopicName,
+  imageFile
 ) {
   const errors = {};
 
@@ -58,6 +71,14 @@ export function validateForm(
     errors.targetAudiences = "נא לבחור לפחות קהל יעד אחד";
   }
 
+  // וולידציה לתמונה אם הועלתה תמונה
+  if (imageFile) {
+    const imageError = validateImage(imageFile);
+    if (imageError) {
+      errors.image = imageError;
+    }
+  }
+
   return errors;
 }
 
@@ -75,6 +96,25 @@ export function validateFile(file) {
   // Check file size
   if (file && file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
     return `גודל הקובץ חייב להיות קטן מ-${MAX_FILE_SIZE_MB}MB`;
+  }
+
+  return null;
+}
+
+/**
+ * Validates an image file for upload
+ * @param {File} file - The image file to validate
+ * @returns {string|null} - An validation error message if invalid, or null if valid
+ */
+export function validateImage(file) {
+  // Check file type
+  if (file && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "סוג תמונה לא נתמך. אנא העלה קובץ מסוג JPG, PNG או GIF";
+  }
+
+  // Check file size
+  if (file && file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+    return `גודל התמונה חייב להיות קטן מ-${MAX_IMAGE_SIZE_MB}MB`;
   }
 
   return null;

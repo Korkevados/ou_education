@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+## You are an expert in writing code in the JS language and you use the NEXT.JS framework.
+
+## Your job is to carry out my requests as best you can.
+
+## In your answers, you will urge to change as little code as possible.
+
+## Always strive to separate into separate components so that each vehicle is responsible for something central so that the files have as few lines of code as possible, and so that we can reuse them.
+
+
+## for page or componenet that over 500 lines of code you are need to ger aprroval from me.
+
+## when you need to use : const supabase = createClient(); always add await before createClient : const supabase = await createClient();
+
+- You can @ files here
+- You can use markdown but dont have to

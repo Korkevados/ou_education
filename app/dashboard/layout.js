@@ -78,22 +78,32 @@ export default function DashboardLayout({ children }) {
   ];
 
   return (
-    <div className="flex h-full w-full flex-col overflow-auto no-scrollbar">
-      <DashboardHeader />
-      <div className="flex h-full flex-col md:px-8 py-4 px-4 bg-sky-50">
-        <h1 className="text-3xl font-bold mb-8 text-right text-gray-800">
-          {greeting}, {userName}
-        </h1>
-        <div className="h-full flex-1 flex lg:min-h-[500px] lg:h-[calc(100vh-16rem)]">
-          {/* Navigation - Hidden on mobile */}
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Header Fixed */}
+      <div className="flex-none">
+        <DashboardHeader />
+      </div>
+
+      {/* Main Content Area with Fixed Header and Scrollable Content */}
+      <div className="flex-1 flex flex-col md:px-8 py-4 px-4 bg-sky-50 overflow-hidden">
+        {/* Fixed Greeting Banner */}
+        <div className="flex-none mb-4">
+          <h1 className="text-3xl font-bold text-right text-gray-800">
+            {greeting}, {userName}
+          </h1>
+        </div>
+
+        {/* Main Content Area with Scrollable Content */}
+        <div className="flex-1 flex overflow-hidden lg:min-h-0">
+          {/* Fixed Navigation - Hidden on mobile */}
           <div
-            className={`hidden md:block ${LAYOUT_CONFIG.sideNavWidth} border-r ml-4`}>
+            className={`hidden md:block flex-none ${LAYOUT_CONFIG.sideNavWidth} border-r ml-4 overflow-y-auto`}>
             <DashboardNav />
           </div>
 
-          {/* Main Content Area - Full width on mobile */}
+          {/* Scrollable Content Area */}
           <div
-            className={`w-full md:${LAYOUT_CONFIG.mainContentWidth} h-full flex flex-col flex-1`}>
+            className={`w-full md:${LAYOUT_CONFIG.mainContentWidth} overflow-y-auto`}>
             {children}
           </div>
         </div>

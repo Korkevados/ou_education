@@ -321,112 +321,64 @@ function getStatusText(status) {
 // Function to approve a pending topic (admin only)
 export async function approvePendingTopic(topicId) {
   try {
-    console.log("Approving pending topic:", topicId);
     const supabase = await createClient();
 
-    const { data: session, error: sessionError } =
-      await supabase.auth.getUser();
-    if (sessionError || !session?.user) {
-      console.error("Session error:", sessionError);
-      return { error: "אין הרשאה. נא להתחבר מחדש." };
-    }
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Unauthorized");
 
-    // Check if user is admin
-    const { data: roleData, error: roleError } = await supabase
-      .from("users")
-      .select("user_type")
-      .eq("supabase_id", session.user.id)
-      .single();
-
-    if (roleError || !roleData) {
-      return { error: "אין הרשאת מנהל" };
-    }
-    if (
-      roleData.user_type !== "ADMIN" &&
-      roleData.user_type !== "TRAINING_MANAGER"
-    ) {
-      return { error: "אין הרשאת מנהל" };
-    }
-
-    // Get the pending topic
-    const { data: pendingTopic, error: fetchError } = await supabase
-      .from("pending_topics")
-      .select("*")
-      .eq("id", topicId)
-      .single();
-
-    if (fetchError || !pendingTopic) {
-      console.error("Error fetching pending topic:", fetchError);
-      return { error: "שגיאה בטעינת הנושא" };
-    }
-
-    // Start a transaction
-    const { error: transactionError } = await supabase.rpc(
+    // Call the database function to approve the topic
+    const { error: functionError } = await supabase.rpc(
       "approve_pending_topic",
       {
         p_topic_id: topicId,
-        p_approved_by: session.user.id,
+        p_approved_by: user.id,
       }
     );
 
-    if (transactionError) {
-      console.error(
-        "Error in approve_pending_topic transaction:",
-        transactionError
-      );
-      return { error: "שגיאה באישור הנושא" };
-    }
+    if (functionError) throw functionError;
 
-    return { success: true };
+    return { error: null };
   } catch (error) {
-    console.error("Exception in approvePendingTopic:", error);
-    return { error: "שגיאה באישור הנושא" };
+    console.error("Error approving topic:", error);
+    return {
+      error: error.message,
+    };
   }
 }
 
 // Function to reject a pending topic (admin only)
 export async function rejectPendingTopic(topicId, rejectionReason) {
   try {
-    console.log("Rejecting pending topic:", topicId);
     const supabase = await createClient();
 
-    const { data: session, error: sessionError } =
-      await supabase.auth.getUser();
-    if (sessionError || !session?.user) {
-      console.error("Session error:", sessionError);
-      return { error: "אין הרשאה. נא להתחבר מחדש." };
-    }
+    // Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Unauthorized");
 
-    // Check if user is admin
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (roleError || !roleData || roleData.role !== "admin") {
-      return { error: "אין הרשאת מנהל" };
-    }
-
+    // Update the pending topic status
     const { error: updateError } = await supabase
       .from("pending_topics")
       .update({
         status: "rejected",
         rejection_reason: rejectionReason,
-        approved_by: session.user.id,
-        approved_at: new Date().toISOString(),
       })
       .eq("id", topicId);
 
-    if (updateError) {
-      console.error("Error rejecting pending topic:", updateError);
-      return { error: "שגיאה בדחיית הנושא" };
-    }
+    if (updateError) throw updateError;
 
-    return { success: true };
+    return { error: null };
   } catch (error) {
-    console.error("Exception in rejectPendingTopic:", error);
-    return { error: "שגיאה בדחיית הנושא" };
+    console.error("Error rejecting topic:", error);
+    return {
+      error: error.message,
+    };
   }
 }
 

@@ -26,7 +26,7 @@ function DashboardNav() {
   const [error, setError] = useState(null);
   const router = useRouter();
   const currentPath = usePathname();
-  const [openSubmenus, setOpenSubmenus] = useState({ content: true });
+  const [openSubmenus, setOpenSubmenus] = useState({});
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -59,9 +59,17 @@ function DashboardNav() {
 
   // אוטומטית פתח את התת-תפריט אם נמצאים בדף שקשור אליו
   useEffect(() => {
-    if (currentPath.includes("/dashboard/content")) {
-      setOpenSubmenus((prev) => ({ ...prev, content: true }));
-    }
+    const menuItems = getMenuItems();
+    menuItems.forEach((item) => {
+      if (item.children) {
+        const isChildActive = item.children.some((child) =>
+          currentPath.startsWith(child.href)
+        );
+        if (isChildActive) {
+          setOpenSubmenus((prev) => ({ ...prev, [item.href]: true }));
+        }
+      }
+    });
   }, [currentPath]);
 
   const getMenuItems = () => {
@@ -86,6 +94,70 @@ function DashboardNav() {
       ...prev,
       [submenu]: !prev[submenu],
     }));
+  };
+
+  const renderMenuItem = (item) => {
+    const Icon = Icons[item.icon];
+    const isActive = currentPath === item.href;
+    const hasChildren = item.children && item.children.length > 0;
+    const isSubmenuOpen = openSubmenus[item.href];
+
+    return (
+      <li key={item.name}>
+        {hasChildren ? (
+          <div>
+            <button
+              onClick={() => toggleSubmenu(item.href)}
+              className={cn(
+                "flex items-center justify-between w-full p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
+                isActive && "bg-gray-100"
+              )}>
+              <div className="flex items-center space-x-3">
+                <Icon className="h-5 w-5 ml-3" />
+                <span>{item.name}</span>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  isSubmenuOpen && "transform rotate-180"
+                )}
+              />
+            </button>
+            {isSubmenuOpen && (
+              <ul className="mr-4 mt-2 space-y-1">
+                {item.children.map((child) => {
+                  const ChildIcon = Icons[child.icon];
+                  const isChildActive = currentPath === child.href;
+                  return (
+                    <li key={child.name}>
+                      <Link
+                        href={child.href}
+                        className={cn(
+                          "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
+                          isChildActive && "bg-gray-100"
+                        )}>
+                        <ChildIcon className="h-5 w-5 ml-3" />
+                        <span>{child.name}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <Link
+            href={item.href}
+            className={cn(
+              "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
+              isActive && "bg-gray-100"
+            )}>
+            <Icon className="h-5 w-5 ml-3" />
+            <span>{item.name}</span>
+          </Link>
+        )}
+      </li>
+    );
   };
 
   if (isLoading) {
@@ -119,94 +191,7 @@ function DashboardNav() {
 
   return (
     <nav className="h-full bg-white shadow-lg p-4">
-      <ul className="space-y-2 mb-4">
-        {getMenuItems().map((item) => {
-          const Icon = Icons[item.icon];
-          return (
-            <li key={item.name}>
-              <Link
-                href={item.href}
-                className="flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200">
-                <Icon className="h-5 w-5 ml-3" />
-                <span>{item.name}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
-        {/* בית */}
-        <Link
-          href="/dashboard"
-          className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100",
-            currentPath === "/dashboard" ? "bg-gray-100 font-semibold" : ""
-          )}>
-          <Home className="h-4 w-4 ml-2" />
-          <span>בית</span>
-        </Link>
-
-        {/* תוכן */}
-        <div>
-          <div
-            onClick={() => toggleSubmenu("content")}
-            className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer",
-              currentPath.includes("/dashboard/content")
-                ? "bg-gray-100 font-semibold"
-                : ""
-            )}>
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 ml-2" />
-              <span>תוכן</span>
-            </div>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 transition-transform",
-                openSubmenus.content ? "rotate-180" : ""
-              )}
-            />
-          </div>
-          {openSubmenus.content && (
-            <div className="mr-4 mt-1 flex flex-col gap-1">
-              <Link
-                href="/dashboard/content"
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100",
-                  currentPath === "/dashboard/content"
-                    ? "bg-gray-100 font-semibold"
-                    : ""
-                )}>
-                <FileText className="h-4 w-4 ml-2" />
-                <span>ניהול תכנים</span>
-              </Link>
-              <Link
-                href="/dashboard/content/new"
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100",
-                  currentPath === "/dashboard/content/new"
-                    ? "bg-gray-100 font-semibold"
-                    : ""
-                )}>
-                <FilePlus className="h-4 w-4 ml-2" />
-                <span>תוכן חדש</span>
-              </Link>
-              <Link
-                href="/dashboard/content/explore"
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100",
-                  currentPath === "/dashboard/content/explore"
-                    ? "bg-gray-100 font-semibold"
-                    : ""
-                )}>
-                <Compass className="h-4 w-4 ml-2" />
-                <span>גלה תוכן</span>
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
+      <ul className="space-y-2 mb-4">{getMenuItems().map(renderMenuItem)}</ul>
     </nav>
   );
 }

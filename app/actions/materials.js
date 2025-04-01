@@ -3,13 +3,12 @@
 "use server";
 
 import createClient from "@/lib/supabase/supabase-server";
-import { v4 as uuidv4 } from "uuid";
 import { revalidatePath } from "next/cache";
-import getUserDetails from "./auth";
 import { linkMaterialToTargetAudiences } from "./target-audiences";
+import { processPdfAndCreateThumbnail } from "@/utils/pdf-helpers";
 
 // Function to get all materials
-export async function getMaterials() {
+export async function getMaterials(includePending = false) {
   try {
     console.log("Fetching all materials");
     const supabase = await createClient();
@@ -21,8 +20,8 @@ export async function getMaterials() {
       return { error: "אין הרשאה. נא להתחבר מחדש." };
     }
 
-    // Join with users table to get creator information
-    const { data, error } = await supabase
+    // Build the query
+    let query = supabase
       .from("materials")
       .select(
         `
@@ -33,6 +32,13 @@ export async function getMaterials() {
       `
       )
       .order("created_at", { ascending: false });
+
+    // Only show approved materials unless explicitly requested
+    if (!includePending) {
+      query = query.eq("is_approved", true);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching materials:", error);
@@ -149,6 +155,7 @@ export async function uploadMaterial({
   mainTopicId,
   estimatedTime,
   fileUrl,
+  photoUrl,
   targetAudiences,
   newTopic,
 }) {
@@ -166,6 +173,39 @@ export async function uploadMaterial({
     // Sanitize IDs - convert empty strings or falsy values to null
     const sanitizedMainTopicId = mainTopicId || null;
 
+    // Generate thumbnail for PDF files if no custom image was provided
+    let finalPhotoUrl = photoUrl;
+    if (!finalPhotoUrl && fileUrl && fileUrl.toLowerCase().endsWith(".pdf")) {
+      try {
+        console.log("Starting thumbnail generation for PDF:", fileUrl);
+
+        // בדיקה שה-URL תקין
+        if (!fileUrl.startsWith("http")) {
+          throw new Error(`Invalid URL format: ${fileUrl}`);
+        }
+
+        // ניסיון ליצירת תמונה ממוגרת
+        const uniqueFileName = `${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+
+        finalPhotoUrl = await processPdfAndCreateThumbnail(
+          fileUrl,
+          uniqueFileName
+        );
+        console.log("Generated thumbnail URL:", finalPhotoUrl);
+      } catch (thumbnailError) {
+        // אם יש שגיאה ביצירת התמונה הממוגרת, פשוט נמשיך בלעדיה
+        console.error(
+          "Error generating thumbnail, continuing without it:",
+          thumbnailError
+        );
+
+        // המשך התהליך ללא תמונה ממוגרת
+        finalPhotoUrl = null;
+      }
+    }
+
     // Insert material record
     const { data: material, error: materialError } = await supabase
       .from("materials")
@@ -173,10 +213,12 @@ export async function uploadMaterial({
         title,
         description,
         main_topic_id: sanitizedMainTopicId,
-        sub_topic_id: null, // We no longer use sub-topics
+        sub_topic_id: null,
         estimated_time: estimatedTime,
         url: fileUrl,
+        photo_url: finalPhotoUrl,
         creator_id: session.user.id,
+        is_approved: false,
       })
       .select()
       .single();
@@ -221,10 +263,14 @@ export async function uploadMaterial({
       }
     }
 
+    // Revalidate content pages to update caches
+    revalidatePath("/dashboard/content");
+    revalidatePath("/dashboard/explore");
+
     return { data: material };
   } catch (error) {
-    console.error("Unexpected error in uploadMaterial:", error);
-    return { error: "שגיאה בלתי צפויה בהעלאת החומר" };
+    console.error("Exception in uploadMaterial:", error);
+    return { error: "שגיאה ביצירת חומר לימוד" };
   }
 }
 
@@ -501,5 +547,91 @@ export async function getLikesCount(materialId) {
   } catch (error) {
     console.error("Unexpected error in getLikesCount:", error);
     return { error: "שגיאה בלתי צפויה בספירת לייקים" };
+  }
+}
+
+export async function getMaterialsForApproval() {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("materials")
+      .select(
+        `
+        *,
+        creator:users!materials_creator_id_fkey (
+          full_name
+        ),
+        pending_topic:pending_topics!inner (
+          id,
+          name,
+          is_main_topic,
+          parent_topic_id,
+          status
+        )
+      `
+      )
+      .eq("is_approved", false)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return {
+      data: data.map((material) => ({
+        ...material,
+        creator_name: material.creator?.full_name,
+        pending_topic: material.pending_topic[0], // Convert array to single object
+      })),
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error fetching pending materials:", error);
+    return {
+      data: null,
+      error: error.message,
+    };
+  }
+}
+
+export async function approveMaterialContent(materialId) {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("materials")
+      .update({ is_approved: true })
+      .eq("id", materialId);
+
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error) {
+    console.error("Error approving material:", error);
+    return {
+      error: error.message,
+    };
+  }
+}
+
+export async function rejectMaterialContent(materialId, rejectionReason) {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("materials")
+      .update({
+        is_approved: false,
+        rejection_reason: rejectionReason,
+      })
+      .eq("id", materialId);
+
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error) {
+    console.error("Error rejecting material:", error);
+    return {
+      error: error.message,
+    };
   }
 }

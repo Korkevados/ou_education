@@ -13,12 +13,13 @@ import getUserDetails from "@/app/actions/auth";
 import createSupaClient from "@/lib/supabase/supabase";
 import ContentForm from "./components/ContentForm";
 import InfoBanner from "./components/InfoBanner";
-import { validateForm, validateFile } from "./utils/validators";
+import { validateForm, validateFile, validateImage } from "./utils/validators";
 
 export default function NewContentPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [mainTopics, setMainTopics] = useState([]);
   const [targetAudiences, setTargetAudiences] = useState([]);
   const [user, setUser] = useState(null);
@@ -104,6 +105,27 @@ export default function NewContentPage() {
     setErrors((prev) => ({ ...prev, file: null }));
   };
 
+  const handleImageChange = (e) => {
+    const selectedImage = e.target.files[0];
+
+    if (!selectedImage) {
+      setImageFile(null);
+      setErrors((prev) => ({ ...prev, image: null }));
+      return;
+    }
+
+    // Validate image
+    const errorMessage = validateImage(selectedImage);
+    if (errorMessage) {
+      setErrors((prev) => ({ ...prev, image: errorMessage }));
+      e.target.value = null; // Reset the input
+      return;
+    }
+
+    setImageFile(selectedImage);
+    setErrors((prev) => ({ ...prev, image: null }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -115,7 +137,8 @@ export default function NewContentPage() {
       file,
       selectedTargetAudiences,
       isNewMainTopic,
-      newTopicName
+      newTopicName,
+      imageFile
     );
 
     if (Object.keys(formErrors).length > 0) {
@@ -136,10 +159,11 @@ export default function NewContentPage() {
 
   const uploadContent = async () => {
     try {
+      const supabase = await createSupaClient();
+
       // Upload file first
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const supabase = await createSupaClient();
 
       const { error: uploadError } = await supabase.storage
         .from("content")
@@ -151,10 +175,32 @@ export default function NewContentPage() {
         return;
       }
 
-      // Get the public URL
+      // Get the public URL for the content file
       const {
         data: { publicUrl },
       } = supabase.storage.from("content").getPublicUrl(fileName);
+
+      // העלאת תמונת התצוגה המקדימה, אם קיימת
+      let imageUrl = null;
+      if (imageFile) {
+        const imageExt = imageFile.name.split(".").pop();
+        const imageName = `${crypto.randomUUID()}.${imageExt}`;
+
+        const { error: imageUploadError } = await supabase.storage
+          .from("photos_materials")
+          .upload(imageName, imageFile);
+
+        if (imageUploadError) {
+          console.error("Error uploading image:", imageUploadError);
+          toast.error("שגיאה בהעלאת התמונה, ממשיך ללא תמונה");
+        } else {
+          // קבלת ה-URL הציבורי לתמונה
+          const {
+            data: { publicUrl: imagePublicUrl },
+          } = supabase.storage.from("photos_materials").getPublicUrl(imageName);
+          imageUrl = imagePublicUrl;
+        }
+      }
 
       // Ensure IDs are either valid or null (not empty strings)
       const sanitizedMainTopicId = formData.mainTopicId || null;
@@ -166,6 +212,7 @@ export default function NewContentPage() {
         mainTopicId: isNewMainTopic ? null : sanitizedMainTopicId,
         estimatedTime: parseInt(formData.estimatedTime),
         fileUrl: publicUrl,
+        photoUrl: imageUrl, // שליחת נתיב התמונה, אם קיים
         targetAudiences: selectedTargetAudiences,
         newTopic: isNewMainTopic
           ? {
@@ -176,8 +223,12 @@ export default function NewContentPage() {
       });
 
       if (error) {
-        // If material creation failed, clean up the uploaded file
+        // If material creation failed, clean up the uploaded files
         await supabase.storage.from("content").remove([fileName]);
+        if (imageUrl) {
+          const imageName = imageUrl.split("/").pop();
+          await supabase.storage.from("photos_materials").remove([imageName]);
+        }
         toast.error(error);
         return;
       }
@@ -194,7 +245,7 @@ export default function NewContentPage() {
   };
 
   return (
-    <div className="flex flex-col h-full md:w-[80%] bg-white rounded-lg shadow-md overflow-y-auto">
+    <div className="flex flex-col h-full md:w-[80%] bg-white rounded-lg shadow-md overflow-y-auto mx-auto">
       <Card>
         <CardHeader>
           <CardTitle className="text-center text-2xl">העלאת תוכן חדש</CardTitle>
@@ -207,10 +258,12 @@ export default function NewContentPage() {
             handleInputChange={handleInputChange}
             handleSelectChange={handleSelectChange}
             handleFileChange={handleFileChange}
+            handleImageChange={handleImageChange}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
             errors={errors}
             file={file}
+            imageFile={imageFile}
             isNewMainTopic={isNewMainTopic}
             setIsNewMainTopic={setIsNewMainTopic}
             newTopicName={newTopicName}

@@ -8,14 +8,14 @@ import { PendingTopicsTable } from "./components/pending-topics-table";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function PendingTopicsPage() {
-  const [pendingTopics, setPendingTopics] = useState([]);
+  const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadPendingTopics = async () => {
+    const loadTopics = async () => {
       try {
         const { data, error } = await getPendingTopics();
         if (!isMounted) return;
@@ -28,13 +28,13 @@ export default function PendingTopicsPage() {
           });
           return;
         }
-        setPendingTopics(data || []);
+        setTopics(data || []);
       } catch (error) {
         if (!isMounted) return;
-        console.error("Error loading pending topics:", error);
+        console.error("Error loading topics:", error);
         toast({
           title: "שגיאה",
-          description: "שגיאה בטעינת נושאים ממתינים",
+          description: "שגיאה בטעינת הנושאים",
           variant: "destructive",
         });
       } finally {
@@ -44,19 +44,17 @@ export default function PendingTopicsPage() {
       }
     };
 
-    loadPendingTopics();
+    loadTopics();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, []); // Empty dependency array since we only want to load once
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-bold">נושאים ממתינים לאישור</h1>
-      </div>
-      <PendingTopicsTable topics={pendingTopics} loading={loading} />
+    <div className="space-y-4">
+      <h1 className="text-3xl font-bold text-right">אישור נושאים</h1>
+      <PendingTopicsTable topics={topics} loading={loading} />
     </div>
   );
 }

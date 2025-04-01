@@ -6,24 +6,45 @@ import { getUsers } from "@/app/actions/users";
 import UserManagementClient from "@/components/UserManagementClient";
 import { redirect } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
+import { useEffect, useState } from "react";
 
-export default async function UserManagement() {
-  const user = await getUserDetails();
+export default function UserManagement() {
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!user || user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  useEffect(() => {
+    const checkUserAndFetchData = async () => {
+      try {
+        // Check user role
+        const user = await getUserDetails();
+        if (!user || user.role !== "ADMIN") {
+          redirect("/dashboard");
+        }
 
-  // Fetch real users data
-  const { data: users, error } = await getUsers();
+        // Fetch users data
+        const { data: users1, error } = await getUsers();
+        if (error) {
+          console.error("Error fetching users:", error);
+          return;
+        }
+        console.log(users1);
+        setUsers(users1);
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  if (error) {
-    console.error("Error fetching users:", error);
+    checkUserAndFetchData();
+  }, []);
+
+  if (isLoading) {
     return (
       <div className="p-4 bg-white max-h-full shadow-lg">
         <div className="flex flex-col items-center justify-center p-8">
-          <div className="text-red-500 text-xl mb-4">שגיאה בטעינת המשתמשים</div>
-          <div className="text-gray-600">פרטי השגיאה: {error}</div>
+          <Spinner className="w-8 h-8 mb-4" />
+          <div className="text-gray-600">טוען משתמשים...</div>
         </div>
       </div>
     );
