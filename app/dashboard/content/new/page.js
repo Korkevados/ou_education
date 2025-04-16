@@ -90,7 +90,7 @@ export default function NewContentPage() {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
 
     // Validate file
@@ -177,42 +177,77 @@ export default function NewContentPage() {
 
       // Get the public URL for the content file
       const {
-        data: { publicUrl },
+        data: { publicUrl: fileUrl },
       } = supabase.storage.from("content").getPublicUrl(fileName);
 
-      // העלאת תמונת התצוגה המקדימה, אם קיימת
-      let imageUrl = null;
-      if (imageFile) {
+      let photoUrl = null;
+
+      // If no image was provided, generate preview
+      if (!imageFile) {
+        try {
+          console.log("Starting preview generation for file:", file.name);
+          // Create FormData
+          const formData = new FormData();
+          formData.append("file", file);
+
+          // Send to API
+          const response = await fetch("/api/content/preview", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to generate preview");
+          }
+
+          // Get the response with the URL
+          const result = await response.json();
+          console.log("Preview API response:", result);
+
+          if (result.success && result.url) {
+            console.log("Preview generated successfully, URL:", result.url);
+            photoUrl = result.url;
+          } else {
+            console.error("Preview API returned success=false or no URL");
+            throw new Error("Invalid API response");
+          }
+        } catch (error) {
+          console.error("Error generating preview:", error);
+          toast.warning("לא הצלחנו ליצור תצוגה מקדימה, ממשיכים בלעדיה");
+        }
+      } else if (imageFile) {
+        // Upload provided image
         const imageExt = imageFile.name.split(".").pop();
         const imageName = `${crypto.randomUUID()}.${imageExt}`;
 
         const { error: imageUploadError } = await supabase.storage
-          .from("photos_materials")
+          .from("photos-materials")
           .upload(imageName, imageFile);
 
         if (imageUploadError) {
           console.error("Error uploading image:", imageUploadError);
-          toast.error("שגיאה בהעלאת התמונה, ממשיך ללא תמונה");
+          toast.warning("שגיאה בהעלאת התמונה, ממשיכים בלעדיה");
         } else {
-          // קבלת ה-URL הציבורי לתמונה
           const {
-            data: { publicUrl: imagePublicUrl },
-          } = supabase.storage.from("photos_materials").getPublicUrl(imageName);
-          imageUrl = imagePublicUrl;
+            data: { publicUrl },
+          } = supabase.storage.from("photos-materials").getPublicUrl(imageName);
+          photoUrl = publicUrl;
         }
       }
 
-      // Ensure IDs are either valid or null (not empty strings)
+      console.log("Final URLs before material upload:", { fileUrl, photoUrl });
+
+      // Ensure IDs are either valid or null
       const sanitizedMainTopicId = formData.mainTopicId || null;
 
-      // Now upload the material with the file URL
+      // Now upload the material with all URLs
       const { data, error } = await uploadMaterial({
         title: formData.title.trim(),
         description: formData.description.trim(),
         mainTopicId: isNewMainTopic ? null : sanitizedMainTopicId,
         estimatedTime: parseInt(formData.estimatedTime),
-        fileUrl: publicUrl,
-        photoUrl: imageUrl, // שליחת נתיב התמונה, אם קיים
+        fileUrl: fileUrl,
+        photoUrl: photoUrl,
         targetAudiences: selectedTargetAudiences,
         newTopic: isNewMainTopic
           ? {
@@ -225,14 +260,15 @@ export default function NewContentPage() {
       if (error) {
         // If material creation failed, clean up the uploaded files
         await supabase.storage.from("content").remove([fileName]);
-        if (imageUrl) {
-          const imageName = imageUrl.split("/").pop();
-          await supabase.storage.from("photos_materials").remove([imageName]);
+        if (photoUrl) {
+          const imageName = photoUrl.split("/").pop();
+          await supabase.storage.from("photos-materials").remove([imageName]);
         }
         toast.error(error);
         return;
       }
 
+      console.log("Material uploaded successfully:", data);
       toast.success("התוכן הועלה בהצלחה");
       if (isNewMainTopic) {
         toast.info("הנושא החדש ממתין לאישור מנהל");

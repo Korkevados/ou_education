@@ -5,7 +5,6 @@
 import createClient from "@/lib/supabase/supabase-server";
 import { revalidatePath } from "next/cache";
 import { linkMaterialToTargetAudiences } from "./target-audiences";
-import { processPdfAndCreateThumbnail } from "@/utils/pdf-helpers";
 
 // Function to get all materials
 export async function getMaterials(includePending = false) {
@@ -170,43 +169,10 @@ export async function uploadMaterial({
       return { error: "אין הרשאה. נא להתחבר מחדש." };
     }
 
-    // Sanitize IDs - convert empty strings or falsy values to null
+    // Sanitize IDs
     const sanitizedMainTopicId = mainTopicId || null;
 
-    // Generate thumbnail for PDF files if no custom image was provided
-    let finalPhotoUrl = photoUrl;
-    if (!finalPhotoUrl && fileUrl && fileUrl.toLowerCase().endsWith(".pdf")) {
-      try {
-        console.log("Starting thumbnail generation for PDF:", fileUrl);
-
-        // בדיקה שה-URL תקין
-        if (!fileUrl.startsWith("http")) {
-          throw new Error(`Invalid URL format: ${fileUrl}`);
-        }
-
-        // ניסיון ליצירת תמונה ממוגרת
-        const uniqueFileName = `${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-
-        finalPhotoUrl = await processPdfAndCreateThumbnail(
-          fileUrl,
-          uniqueFileName
-        );
-        console.log("Generated thumbnail URL:", finalPhotoUrl);
-      } catch (thumbnailError) {
-        // אם יש שגיאה ביצירת התמונה הממוגרת, פשוט נמשיך בלעדיה
-        console.error(
-          "Error generating thumbnail, continuing without it:",
-          thumbnailError
-        );
-
-        // המשך התהליך ללא תמונה ממוגרת
-        finalPhotoUrl = null;
-      }
-    }
-
-    // Insert material record
+    // Insert material record first
     const { data: material, error: materialError } = await supabase
       .from("materials")
       .insert({
@@ -216,7 +182,7 @@ export async function uploadMaterial({
         sub_topic_id: null,
         estimated_time: estimatedTime,
         url: fileUrl,
-        photo_url: finalPhotoUrl,
+        photo_url: photoUrl, // Initially use provided photo or null
         creator_id: session.user.id,
         is_approved: false,
       })
@@ -249,8 +215,8 @@ export async function uploadMaterial({
         .from("pending_topics")
         .insert({
           name: newTopic.name,
-          is_main_topic: true, // Always a main topic now
-          parent_topic_id: null, // No parent topics since we don't use sub-topics anymore
+          is_main_topic: true,
+          parent_topic_id: null,
           material_id: material.id,
           created_by: session.user.id,
         });
@@ -263,7 +229,31 @@ export async function uploadMaterial({
       }
     }
 
-    // Revalidate content pages to update caches
+    // If no photo provided and file is PDF, generate preview
+    if (!photoUrl && fileUrl && fileUrl.toLowerCase().endsWith(".pdf")) {
+      try {
+        // Call our preview generation API
+        const response = await fetch("/api/content/preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            materialId: material.id,
+            fileUrl: fileUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          console.warn("Failed to generate preview, continuing without it");
+        }
+      } catch (previewError) {
+        console.warn("Error generating preview:", previewError);
+        // Continue without preview - not a critical error
+      }
+    }
+
+    // Revalidate content pages
     revalidatePath("/dashboard/content");
     revalidatePath("/dashboard/explore");
 
