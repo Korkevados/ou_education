@@ -5,6 +5,7 @@
 import createClient from "@/lib/supabase/supabase-server";
 import { revalidatePath } from "next/cache";
 import { linkMaterialToTargetAudiences } from "./target-audiences";
+import createSupaClient from "@/lib/supabase/supabase";
 
 // Function to get all materials
 export async function getMaterials(includePending = false) {
@@ -542,44 +543,71 @@ export async function getLikesCount(materialId) {
 
 export async function getMaterialsForApproval() {
   try {
+    console.log("Fetching materials for approval");
     const supabase = await createClient();
 
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות לצפות בתכנים הממתינים לאישור" };
+    }
+
+    // Modified query to use LEFT JOIN instead of INNER JOIN
     const { data, error } = await supabase
       .from("materials")
       .select(
         `
         *,
         creator:users!materials_creator_id_fkey (
-          full_name
+          full_name,
+          email
         ),
-        pending_topic:pending_topics!inner (
+        pending_topic:pending_topics (
           id,
           name,
           is_main_topic,
           parent_topic_id,
           status
+        ),
+        main_topic:main_topics (
+          id,
+          name
         )
       `
       )
       .eq("is_approved", false)
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching materials:", error);
+      return { error: "שגיאה בטעינת החומרים" };
+    }
 
-    return {
-      data: data.map((material) => ({
-        ...material,
-        creator_name: material.creator?.full_name,
-        pending_topic: material.pending_topic[0], // Convert array to single object
-      })),
-      error: null,
-    };
+    console.log("Found unapproved materials:", data?.length || 0);
+    return { data };
   } catch (error) {
-    console.error("Error fetching pending materials:", error);
-    return {
-      data: null,
-      error: error.message,
-    };
+    console.error("Exception in getMaterialsForApproval:", error);
+    return { error: "שגיאה בטעינת החומרים" };
   }
 }
 
