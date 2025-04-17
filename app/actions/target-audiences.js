@@ -26,7 +26,7 @@ export async function getTargetAudiences() {
       console.error("Error fetching target audiences:", error);
       return { error: "שגיאה בטעינת קהלי יעד" };
     }
-
+    console.log("Target audiences fetched successfully:", data);
     return { data };
   } catch (error) {
     console.error("Exception in getTargetAudiences:", error);
