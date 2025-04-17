@@ -137,11 +137,15 @@ export default function UserManagementClient({ initialUsers }) {
   };
 
   const handleEditUser = async (userData) => {
+    console.log("handleEditUser called with:", userData);
     try {
       setIsLoading(true);
       console.log("handleEditUser called with:", userData);
 
-      const { data, error } = await updateUser(editingUser.id, userData);
+      const { data, error } = await updateUser({
+        userId: userData.id,
+        ...userData,
+      });
       console.log("updateUser response:", { data, error });
 
       if (error) {
@@ -153,7 +157,7 @@ export default function UserManagementClient({ initialUsers }) {
       // Update the user in the list
       setUsers(
         users.map((user) =>
-          user.id === editingUser.id
+          user.id === userData.id
             ? {
                 ...user,
                 full_name: userData.name,
@@ -262,7 +266,7 @@ export default function UserManagementClient({ initialUsers }) {
           `UserManagement: Updating user ${editingUser.id}:`,
           formData
         );
-        result = await updateUser(editingUser.id, formData);
+        result = await updateUser(formData);
       } else {
         // Create new user
         console.log("UserManagement: Creating new user:", formData);
@@ -335,7 +339,7 @@ export default function UserManagementClient({ initialUsers }) {
             </DialogHeader>
             <UserForm
               user={editingUser}
-              onSubmit={handleFormSubmit}
+              onSubmit={editingUser ? handleEditUser : handleFormSubmit}
               onCancel={handleCloseDialog}
               isLoading={isLoading}
             />

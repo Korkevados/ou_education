@@ -25,6 +25,7 @@ import { getActivityCenters } from "@/app/actions/users";
 import { Loader2, PlusCircle, Check } from "lucide-react";
 
 const formSchema = z.object({
+  id: z.string().optional(),
   name: z
     .string()
     .min(2, {
@@ -83,6 +84,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }) {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: user?.id || "",
       name: user?.full_name || "",
       phone: user?.phone || "",
       email: user?.email || "",

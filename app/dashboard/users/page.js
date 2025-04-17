@@ -60,7 +60,7 @@ export default function UserManagement() {
       </div>
     );
   }
-
+  console.log("users:", users);
   return (
     <div className="p-4 bg-white max-h-full shadow-lg">
       <UserManagementClient initialUsers={users} />
