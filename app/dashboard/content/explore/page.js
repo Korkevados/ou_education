@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { ContentCarousel } from "@/components/ui/ContentCarousel";
 import { Card } from "@/components/ui/card";
+import { PopularTopicsSection } from "@/components/ui/PopularTopicsSection";
 import { getMaterials } from "@/app/actions/materials";
 import { getMainTopics } from "@/app/actions/topics";
 
@@ -62,6 +63,16 @@ export default function ExplorePage() {
     .sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0))
     .slice(0, 10);
 
+  // חומרים לפי דירוג (הכי הרבה לייקים)
+  const topLikedMaterials = [...materials]
+    .sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0))
+    .slice(0, 10);
+
+  // חומרים עם הכי הרבה תגובות
+  const mostCommentedMaterials = [...materials]
+    .sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0))
+    .slice(0, 10);
+
   // ארגון חומרים לפי נושאים
   const materialsByTopic = topics
     .map((topic) => ({
@@ -90,6 +101,9 @@ export default function ExplorePage() {
         </Card>
       ) : (
         <div className="space-y-8">
+          {/* נושאים פופולריים */}
+          <PopularTopicsSection limit={6} />
+
           {/* תכנים אחרונים */}
           {latestMaterials.length > 0 && (
             <ContentCarousel title="נוסף לאחרונה" materials={latestMaterials} />
@@ -100,6 +114,22 @@ export default function ExplorePage() {
             <ContentCarousel
               title="הכי פופולרי"
               materials={topRatedMaterials}
+            />
+          )}
+
+          {/* תכנים לפי דירוג (הכי הרבה לייקים) */}
+          {topLikedMaterials.length > 0 && (
+            <ContentCarousel
+              title="הכי פופולרי לפי לייקים"
+              materials={topLikedMaterials}
+            />
+          )}
+
+          {/* תכנים עם הכי הרבה תגובות */}
+          {mostCommentedMaterials.length > 0 && (
+            <ContentCarousel
+              title="הכי פופולרי לפי תגובות"
+              materials={mostCommentedMaterials}
             />
           )}
 

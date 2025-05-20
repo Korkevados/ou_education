@@ -96,9 +96,17 @@ export function ContentCard({ material, onClick, isFocused = false }) {
         </div>
 
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center text-blue-600 dark:text-blue-400">
-            <ThumbsUp size={16} />
-            <span className="mr-2 text-sm">{material.likes_count || 0}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-blue-600 dark:text-blue-400">
+              <ThumbsUp size={16} />
+              <span className="mr-2 text-sm">{material.likes_count || 0}</span>
+            </div>
+            <div className="flex items-center text-gray-500 dark:text-gray-400">
+              <MessageCircle size={16} />
+              <span className="mr-2 text-sm">
+                {material.comments_count || 0}
+              </span>
+            </div>
           </div>
           <div className="flex items-center text-gray-500 dark:text-gray-400">
             <Clock size={16} />

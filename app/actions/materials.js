@@ -45,9 +45,10 @@ export async function getMaterials(includePending = false) {
       return { error: "שגיאה בטעינת חומרים" };
     }
 
-    // For each material, fetch its target audiences
-    const materialsWithAudiences = await Promise.all(
+    // For each material, fetch its target audiences, likes count, and comments
+    const materialsWithDetails = await Promise.all(
       data.map(async (material) => {
+        // Fetch target audiences
         const { data: audiences, error: audiencesError } = await supabase
           .from("material_target_audiences")
           .select(
@@ -65,17 +66,55 @@ export async function getMaterials(includePending = false) {
           return {
             ...material,
             target_audiences: [],
+            likes_count: 0,
+            comments: [],
+            comments_count: 0,
           };
+        }
+
+        // Fetch likes count
+        const { count: likesCount, error: likesError } = await supabase
+          .from("likes")
+          .select("id", { count: "exact" })
+          .eq("material_id", material.id);
+
+        if (likesError) {
+          console.error(
+            `Error fetching likes count for material ${material.id}:`,
+            likesError
+          );
+        }
+
+        // Fetch comments with user information
+        const { data: comments, error: commentsError } = await supabase
+          .from("comments")
+          .select(
+            `
+            *,
+            user:user_id(id, full_name)
+          `
+          )
+          .eq("material_id", material.id)
+          .order("created_at", { ascending: false });
+
+        if (commentsError) {
+          console.error(
+            `Error fetching comments for material ${material.id}:`,
+            commentsError
+          );
         }
 
         return {
           ...material,
           target_audiences: audiences.map((a) => a.target_audience),
+          likes_count: likesCount || 0,
+          comments: comments || [],
+          comments_count: comments?.length || 0,
         };
       })
     );
 
-    return { data: materialsWithAudiences };
+    return { data: materialsWithDetails };
   } catch (error) {
     console.error("Exception in getMaterials:", error);
     return { error: "שגיאה בטעינת חומרים" };
@@ -132,14 +171,52 @@ export async function getMaterialById(id) {
         data: {
           ...data,
           target_audiences: [],
+          likes_count: 0,
+          comments: [],
+          comments_count: 0,
         },
       };
+    }
+
+    // Fetch likes count
+    const { count: likesCount, error: likesError } = await supabase
+      .from("likes")
+      .select("id", { count: "exact" })
+      .eq("material_id", id);
+
+    if (likesError) {
+      console.error(
+        `Error fetching likes count for material ${id}:`,
+        likesError
+      );
+    }
+
+    // Fetch comments with user information
+    const { data: comments, error: commentsError } = await supabase
+      .from("comments")
+      .select(
+        `
+        *,
+        user:user_id(id, full_name)
+      `
+      )
+      .eq("material_id", id)
+      .order("created_at", { ascending: false });
+
+    if (commentsError) {
+      console.error(
+        `Error fetching comments for material ${id}:`,
+        commentsError
+      );
     }
 
     return {
       data: {
         ...data,
         target_audiences: audiences.map((a) => a.target_audience),
+        likes_count: likesCount || 0,
+        comments: comments || [],
+        comments_count: comments?.length || 0,
       },
     };
   } catch (error) {
@@ -342,12 +419,27 @@ export async function toggleLike(materialId) {
       return { error: "אין הרשאה. נא להתחבר מחדש." };
     }
 
+    // Verify the user exists in the users table
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error checking user existence:", userError);
+      return {
+        error:
+          "שגיאה באיתור המשתמש. יש להתחבר מחדש או ליצור קשר עם מנהל המערכת.",
+      };
+    }
+
     // Check if the user already liked this material
     const { data: existingLike, error: likeCheckError } = await supabase
       .from("likes")
       .select()
       .eq("material_id", materialId)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (likeCheckError && likeCheckError.code !== "PGRST116") {
@@ -376,7 +468,7 @@ export async function toggleLike(materialId) {
       .from("likes")
       .insert({
         material_id: materialId,
-        user_id: session.user.id,
+        user_id: user.id,
       })
       .select()
       .single();
@@ -407,6 +499,21 @@ export async function addComment(materialId, content) {
       return { error: "אין הרשאה. נא להתחבר מחדש." };
     }
 
+    // Verify the user exists in the users table
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error checking user existence:", userError);
+      return {
+        error:
+          "שגיאה באיתור המשתמש. יש להתחבר מחדש או ליצור קשר עם מנהל המערכת.",
+      };
+    }
+
     // Validate content
     if (!content || content.trim().length === 0) {
       return { error: "תוכן התגובה חייב להכיל טקסט" };
@@ -421,7 +528,7 @@ export async function addComment(materialId, content) {
       .from("comments")
       .insert({
         material_id: materialId,
-        user_id: session.user.id,
+        user_id: user.id,
         content: content.trim(),
       })
       .select(
@@ -496,12 +603,24 @@ export async function checkUserLike(materialId) {
       return { error: "אין הרשאה. נא להתחבר מחדש." };
     }
 
+    // Verify the user exists in the users table
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error checking user existence:", userError);
+      return { data: { hasLiked: false } }; // Assume not liked if user not found
+    }
+
     // Check if the user already liked this material
     const { data, error } = await supabase
       .from("likes")
       .select()
       .eq("material_id", materialId)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (error && error.code !== "PGRST116") {
