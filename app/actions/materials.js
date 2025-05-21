@@ -439,7 +439,7 @@ export async function toggleLike(materialId) {
       .from("likes")
       .select()
       .eq("material_id", materialId)
-      .eq("user_id", user.id)
+      .eq("user_id", session.user.id)
       .single();
 
     if (likeCheckError && likeCheckError.code !== "PGRST116") {
@@ -462,13 +462,13 @@ export async function toggleLike(materialId) {
 
       return { data: { action: "unliked" } };
     }
-
+    console.log("insert like with user.id", user.id);
     // If no like exists, add it
     const { data: newLike, error: addLikeError } = await supabase
       .from("likes")
       .insert({
         material_id: materialId,
-        user_id: user.id,
+        user_id: session.user.id,
       })
       .select()
       .single();
@@ -528,7 +528,7 @@ export async function addComment(materialId, content) {
       .from("comments")
       .insert({
         material_id: materialId,
-        user_id: user.id,
+        user_id: session.user.id,
         content: content.trim(),
       })
       .select(
