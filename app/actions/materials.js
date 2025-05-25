@@ -772,3 +772,88 @@ export async function rejectMaterialContent(materialId, rejectionReason) {
     };
   }
 }
+
+// Function to download a material file
+export async function downloadMaterial(materialId) {
+  try {
+    console.log(`Downloading material: ${materialId}`);
+    const supabase = await createClient();
+
+    // Check session
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Verify the user exists in the users table
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error checking user existence:", userError);
+      return { error: "שגיאה בבדיקת משתמש" };
+    }
+
+    // Get the material details including the file URL
+    const { data: material, error: materialError } = await supabase
+      .from("materials")
+      .select("id, title, url")
+      .eq("id", materialId)
+      .eq("is_approved", true)
+      .single();
+
+    if (materialError) {
+      console.error("Error fetching material:", materialError);
+      return { error: "שגיאה בטעינת פרטי החומר" };
+    }
+
+    if (!material.url) {
+      return { error: "לא נמצא קובץ להורדה" };
+    }
+
+    // Extract the file path from the URL
+    // Assuming the URL format is like the public URLs we saw in the code
+    let filePath = material.url;
+
+    // If it's a full URL, extract just the path part
+    if (filePath.includes("/storage/v1/object/public/content/")) {
+      filePath = filePath.split("/storage/v1/object/public/content/")[1];
+    } else if (filePath.includes("/content/")) {
+      filePath = filePath.split("/content/")[1];
+    }
+
+    // Download the file from Supabase storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("content")
+      .download(filePath);
+
+    if (downloadError) {
+      console.error("Error downloading file:", downloadError);
+      return { error: "שגיאה בהורדת הקובץ" };
+    }
+
+    // Convert blob to base64 for transfer
+    const arrayBuffer = await fileData.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    // Get file extension for proper filename
+    const fileExtension = filePath.split(".").pop();
+    const fileName = `${material.title}.${fileExtension}`;
+
+    return {
+      data: {
+        file: base64,
+        fileName: fileName,
+        mimeType: fileData.type,
+      },
+    };
+  } catch (error) {
+    console.error("Unexpected error in downloadMaterial:", error);
+    return { error: "שגיאה בלתי צפויה בהורדת הקובץ" };
+  }
+}

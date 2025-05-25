@@ -30,6 +30,7 @@ import {
   getComments,
   checkUserLike,
   getLikesCount,
+  downloadMaterial,
 } from "@/app/actions/materials";
 
 export function ContentModal({ material, isOpen, onClose }) {
@@ -131,9 +132,39 @@ export function ContentModal({ material, isOpen, onClose }) {
     }
   };
 
-  const handleDownload = () => {
-    // פתיחת הקובץ בחלון חדש
-    window.open(material.url, "_blank");
+  const handleDownload = async () => {
+    try {
+      const { data, error } = await downloadMaterial(material.id);
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      // Convert base64 back to blob and trigger download
+      const byteCharacters = atob(data.file);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: data.mimeType });
+
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("הקובץ הורד בהצלחה");
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast.error("שגיאה בהורדת הקובץ");
+    }
   };
 
   // שליחת תגובה חדשה
