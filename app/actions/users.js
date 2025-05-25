@@ -4,6 +4,7 @@
 import createClient from "@/lib/supabase/supabase-server";
 import supabaseAdmin from "@/lib/supabase/supabase-admin";
 import getUserDetails from "@/app/actions/auth";
+import { sendSMS } from "./sms";
 
 /**
  * Fetches all users with their center information
@@ -568,7 +569,7 @@ export async function activateUser(userId) {
     // First check if the user exists and is not already active
     const { data: existingUser, error: checkError } = await supabase
       .from("users")
-      .select("id, full_name, is_active")
+      .select("id, full_name, is_active, phone")
       .eq("id", userId)
       .single();
 
@@ -608,6 +609,7 @@ export async function activateUser(userId) {
       `activateUser: User ${existingUser.full_name} successfully activated`
     );
     console.log("=== activateUser: FUNCTION COMPLETED SUCCESSFULLY ===");
+    await sendSMS([existingUser.phone], "מנהל אישר את הרשמתך באפליקציית OU");
     return { data: updatedUser[0] };
   } catch (error) {
     console.error("=== activateUser: GENERAL ERROR ===", error);

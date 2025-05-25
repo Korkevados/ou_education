@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function VerifyPage() {
   const [email, setEmail] = useState("");
@@ -67,6 +68,7 @@ export default function VerifyPage() {
 
   return (
     <>
+      {/* <Header /> */}
       <Header />
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4">
         <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-md">
@@ -179,6 +181,14 @@ export default function VerifyPage() {
               {isLoading ? "מתחבר..." : "התחברות"}
             </button>
           </form>
+
+          <div className="text-center mt-4">
+            <Link
+              href="/forgot-password"
+              className="text-blue-600 hover:text-blue-800 text-sm">
+              שכחת סיסמא?
+            </Link>
+          </div>
 
           {showManualRedirect && (
             <div className="mt-4 text-center">

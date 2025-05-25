@@ -11,6 +11,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* <Header /> */}
       <Header />
       <main className="flex-1 flex items-center justify-center">
         <div className="flex flex-col max-w-4xl w-full space-y-4 px-4">

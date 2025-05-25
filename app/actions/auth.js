@@ -6,6 +6,7 @@ import supabaseAdmin from "@/lib/supabase/supabase-admin";
 import createClient from "@/lib/supabase/supabase-server";
 import axios from "axios";
 import { redirect } from "next/navigation";
+import { sendSMS } from "./sms";
 
 const FIXED_PASSWORD = "258852";
 
@@ -116,7 +117,7 @@ export async function registerGuide({ fullName, phone, email, password }) {
       await supabaseadmin.auth.admin.deleteUser(authUser.user.id);
       return { error: "שגיאה ביצירת המשתמש" };
     }
-
+    await sendSMS([phone], "משתמש נוצר בהצלחה ממתין לאישור מערכת");
     console.log("Guide registered successfully, waiting for admin approval");
     return { success: true };
   } catch (error) {
@@ -404,92 +405,153 @@ export default async function getUserDetails() {
   }
 }
 
-// export async function tempLogin(phone) {
-//   const supabase = await createClient();
-//   try {
-//     // Check if user exists
-//     const supabaseadmin = await supabaseAdmin();
-//     const { data: user, error: userError } = await supabaseadmin
-//       .from("users")
-//       .select("*")
-//       .eq("phone", phone)
-//       .single();
+export async function resetPasswordForEmail(email) {
+  console.log("resetPasswordForEmail", email);
+  try {
+    // Check if user exists in our users table first
+    const supabase = await supabaseAdmin();
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("email, is_active")
+      .eq("email", email)
+      .single();
 
-//     if (userError) {
-//       if (userError.code === "PGRST116") {
-//         // אם אין משתמש כזה בכלל (קוד PGRST116 = no rows returned)
-//         console.log("משתמש לא קיים במערכת");
-//         return { error: "משתמש לא קיים במערכת" };
-//       }
-//       throw userError;
-//     }
+    if (userError && userError.code !== "PGRST116") {
+      console.error("Error checking user:", userError);
+      return { error: "שגיאה בבדיקת המשתמש" };
+    }
 
-//     if (!user) {
-//       return { error: "משתמש לא קיים במערכת" };
-//     }
+    if (!user) {
+      return { error: "לא נמצא משתמש עם כתובת אימייל זו" };
+    }
 
-//     // User exists, check if they have a supabase_id
-//     let authUser;
-//     if (user.supabase_id && user.supabase_id.trim() !== "") {
-//       // אם יש supabase_id, נבדוק אם המשתמש קיים בauth
-//       const { data: existingAuthUser, error: getAuthUserError } =
-//         await supabaseadmin.auth.admin.getUserById(user.supabase_id);
+    if (!user.is_active) {
+      return { error: "החשבון שלך עדיין לא אושר על ידי מנהל המערכת" };
+    }
 
-//       if (!getAuthUserError && existingAuthUser) {
-//         authUser = existingAuthUser.user;
-//       }
-//     }
+    // Send password reset email
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+    });
 
-//     // אם המשתמש לא קיים ב-Auth, ניצור אותו
-//     if (!authUser) {
-//       const emailToUse = user.email || `${phone}@temp.com`;
+    if (error) {
+      console.error("Error sending reset email:", error);
+      return { error: "שגיאה בשליחת מייל איפוס סיסמא" };
+    }
 
-//       const { data: newAuthUser, error: createError } =
-//         await supabaseadmin.auth.admin.createUser({
-//           email: emailToUse,
-//           password: FIXED_PASSWORD,
-//           email_confirm: true,
-//           user_metadata: {
-//             name: user.full_name,
-//             user_type: user.user_type,
-//           },
-//         });
+    return { success: true };
+  } catch (error) {
+    console.error("Error in resetPasswordForEmail:", error);
+    return { error: "שגיאה בתהליך איפוס הסיסמא" };
+  }
+}
 
-//       if (createError) {
-//         throw createError;
-//       }
+export async function tempLogin(phone) {
+  const supabase = await createClient();
+  try {
+    // Check if user exists
+    const supabaseadmin = await supabaseAdmin();
+    const { data: user, error: userError } = await supabaseadmin
+      .from("users")
+      .select("*")
+      .eq("phone", phone)
+      .single();
 
-//       // עדכון שדה supabase_id בטבלת users
-//       const { error: updateError } = await supabaseadmin
-//         .from("users")
-//         .update({
-//           supabase_id: newAuthUser.id,
-//         })
-//         .eq("phone", phone);
+    if (userError) {
+      if (userError.code === "PGRST116") {
+        // אם אין משתמש כזה בכלל (קוד PGRST116 = no rows returned)
+        console.log("משתמש לא קיים במערכת");
+        return { error: "משתמש לא קיים במערכת" };
+      }
+      throw userError;
+    }
 
-//       if (updateError) {
-//         throw updateError;
-//       }
+    if (!user) {
+      return { error: "משתמש לא קיים במערכת" };
+    }
 
-//       authUser = newAuthUser.user;
-//     }
+    // User exists, check if they have a supabase_id
+    let authUser;
+    if (user.supabase_id && user.supabase_id.trim() !== "") {
+      // אם יש supabase_id, נבדוק אם המשתמש קיים בauth
+      const { data: existingAuthUser, error: getAuthUserError } =
+        await supabaseadmin.auth.admin.getUserById(user.supabase_id);
 
-//     // התחברות עם המשתמש
-//     const { data: session, error: signInError } =
-//       await supabase.auth.signInWithPassword({
-//         email: authUser.email || user.email || `${phone}@temp.com`,
-//         password: FIXED_PASSWORD,
-//       });
+      if (!getAuthUserError && existingAuthUser) {
+        authUser = existingAuthUser.user;
+      }
+    }
 
-//     if (signInError) {
-//       throw signInError;
-//     }
+    // אם המשתמש לא קיים ב-Auth, ניצור אותו
+    if (!authUser) {
+      const emailToUse = user.email || `${phone}@temp.com`;
 
-//     return { success: true };
-//   } catch (error) {
-//     console.error("Error in tempLogin:", error);
-//     return {
-//       error: error.message || "Error during login",
-//     };
-//   }
-// }
+      const { data: newAuthUser, error: createError } =
+        await supabaseadmin.auth.admin.createUser({
+          email: emailToUse,
+          password: FIXED_PASSWORD,
+          email_confirm: true,
+          user_metadata: {
+            name: user.full_name,
+            user_type: user.user_type,
+          },
+        });
+
+      if (createError) {
+        throw createError;
+      }
+
+      // עדכון שדה supabase_id בטבלת users
+      const { error: updateError } = await supabaseadmin
+        .from("users")
+        .update({
+          supabase_id: newAuthUser.user.id,
+        })
+        .eq("phone", phone);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      authUser = newAuthUser.user;
+    }
+
+    // התחברות עם המשתמש
+    const { data: session, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: authUser.email || user.email || `${phone}@temp.com`,
+        password: FIXED_PASSWORD,
+      });
+
+    if (signInError) {
+      throw signInError;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in tempLogin:", error);
+    return {
+      error: error.message || "Error during login",
+    };
+  }
+}
+
+export async function updateUserPassword(password) {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.auth.updateUser({
+      password: password,
+    });
+
+    if (error) {
+      console.error("Error updating password:", error);
+      return { error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error in updateUserPassword:", error);
+    return { error: "שגיאה בעדכון הסיסמא" };
+  }
+}

@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import getUserDetails from "@/app/actions/auth";
+import getUserDetails, { resetPasswordForEmail } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -53,6 +53,9 @@ export default function ProfilePage() {
   const [pendingChanges, setPendingChanges] = useState(null);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otp, setOtp] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
+  const [passwordResetError, setPasswordResetError] = useState("");
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -133,6 +136,31 @@ export default function ProfilePage() {
       console.error("Error updating profile:", error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!user.email) {
+      setPasswordResetError("לא נמצאה כתובת אימייל");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setPasswordResetError("");
+    setPasswordResetMessage("");
+
+    try {
+      const result = await resetPasswordForEmail(user.email);
+
+      if (result.error) {
+        setPasswordResetError(result.error);
+      } else {
+        setPasswordResetMessage("נשלח קישור לאיפוס סיסמא לכתובת האימייל שלך");
+      }
+    } catch (error) {
+      setPasswordResetError("שגיאה בשליחת מייל איפוס סיסמא");
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -262,6 +290,39 @@ export default function ProfilePage() {
                   )}
                 />
               </form>
+
+              {/* Password Reset Section */}
+              <div className="mt-8 pt-6 border-t">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">אבטחה</h3>
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      לאיפוס הסיסמא, נשלח קישור לכתובת האימייל שלך
+                    </p>
+
+                    {passwordResetMessage && (
+                      <div className="text-green-600 text-sm bg-green-50 p-3 rounded-md">
+                        {passwordResetMessage}
+                      </div>
+                    )}
+
+                    {passwordResetError && (
+                      <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                        {passwordResetError}
+                      </div>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePasswordReset}
+                      disabled={isResettingPassword || !user.email}
+                      className="w-full sm:w-auto">
+                      {isResettingPassword ? "שולח..." : "איפוס סיסמא"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </Form>
           </div>
         </div>

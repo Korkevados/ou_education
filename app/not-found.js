@@ -11,7 +11,6 @@ export default function NotFound() {
 
   return (
     <>
-      <Header />
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4">
         <div className="max-w-md w-full mx-auto bg-white p-8 rounded-xl shadow-md text-center">
           <div className="flex justify-center mb-6">
