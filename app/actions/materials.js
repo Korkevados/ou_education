@@ -350,16 +350,32 @@ export async function deleteMaterial(id) {
 
     // Check session
     const { data: session, error: sessionError } =
-      await supabase.auth.getSession();
-    if (sessionError || !session?.session) {
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
       console.error("Session error:", sessionError);
       return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (userData.user_type !== "ADMIN") {
+      return { error: "אין לך הרשאות למחוק תכנים" };
     }
 
     // Get the material first to get the file URL
     const { data: material, error: getMaterialError } = await supabase
       .from("materials")
-      .select("url")
+      .select("url, photo_url")
       .eq("id", id)
       .single();
 
@@ -368,33 +384,106 @@ export async function deleteMaterial(id) {
       return { error: "שגיאה במציאת החומר למחיקה" };
     }
 
-    // Extract the file path from the URL
-    const fileUrl = material.url;
-    const urlParts = fileUrl.split("/");
-    const filePath = `materials/${urlParts[urlParts.length - 1]}`;
+    // Delete all related data in sequence
+    // 1. Delete likes
+    const { error: likesError } = await supabase
+      .from("likes")
+      .delete()
+      .eq("material_id", id);
 
-    // Delete the record from the materials table
-    const { error: deleteError } = await supabase
+    if (likesError) {
+      console.error("Error deleting likes:", likesError);
+      return { error: "שגיאה במחיקת לייקים" };
+    }
+
+    // 2. Delete comments
+    const { error: commentsError } = await supabase
+      .from("comments")
+      .delete()
+      .eq("material_id", id);
+
+    if (commentsError) {
+      console.error("Error deleting comments:", commentsError);
+      return { error: "שגיאה במחיקת תגובות" };
+    }
+
+    // 3. Delete material target audiences
+    const { error: audiencesError } = await supabase
+      .from("material_target_audiences")
+      .delete()
+      .eq("material_id", id);
+
+    if (audiencesError) {
+      console.error("Error deleting target audiences:", audiencesError);
+      return { error: "שגיאה במחיקת קהלי יעד" };
+    }
+
+    // 4. Delete material statuses
+    const { error: statusesError } = await supabase
+      .from("material_statuses")
+      .delete()
+      .eq("material_id", id);
+
+    if (statusesError) {
+      console.error("Error deleting material statuses:", statusesError);
+      return { error: "שגיאה במחיקת סטטוסים" };
+    }
+
+    // 5. Delete pending topics related to this material
+    const { error: pendingTopicsError } = await supabase
+      .from("pending_topics")
+      .delete()
+      .eq("material_id", id);
+
+    if (pendingTopicsError) {
+      console.error("Error deleting pending topics:", pendingTopicsError);
+      return { error: "שגיאה במחיקת נושאים ממתינים" };
+    }
+
+    // 6. Finally delete the material itself
+    const { error: materialError } = await supabase
       .from("materials")
       .delete()
       .eq("id", id);
 
-    if (deleteError) {
-      console.error(`Error deleting material with ID ${id}:`, deleteError);
-      return { error: "שגיאה במחיקת החומר ממסד הנתונים" };
+    if (materialError) {
+      console.error("Error deleting material:", materialError);
+      return { error: "שגיאה במחיקת החומר" };
     }
 
-    // Delete the file from storage
-    const { error: storageError } = await supabase.storage
-      .from("content")
-      .remove([filePath]);
+    // Delete files from storage if they exist
+    if (material.url) {
+      const urlParts = material.url.split("/");
+      const filePath = `content/${urlParts[urlParts.length - 1]}`;
 
-    if (storageError) {
-      console.warn(
-        `Warning: Could not delete file ${filePath} from storage:`,
-        storageError
-      );
-      // We don't return an error here because the database record was successfully deleted
+      const { error: storageError } = await supabase.storage
+        .from("content")
+        .remove([filePath]);
+
+      if (storageError) {
+        console.warn(
+          "Warning: Could not delete content file from storage:",
+          storageError
+        );
+      }
+    }
+
+    if (material.photo_url) {
+      const photoUrlParts = material.photo_url.split("/");
+      const photoPath = `photos-materials/${
+        photoUrlParts[photoUrlParts.length - 1]
+      }`;
+
+      const { error: photoStorageError } = await supabase.storage
+        .from("photos-materials")
+        .remove([photoPath]);
+
+      if (photoStorageError) {
+        console.warn(
+          "Warning: Could not delete photo from storage:",
+          photoStorageError
+        );
+      }
     }
 
     revalidatePath("/dashboard/content");
@@ -855,5 +944,101 @@ export async function downloadMaterial(materialId) {
   } catch (error) {
     console.error("Unexpected error in downloadMaterial:", error);
     return { error: "שגיאה בלתי צפויה בהורדת הקובץ" };
+  }
+}
+
+// Function to update a material
+export async function updateMaterial(id, updateData) {
+  try {
+    console.log(`Updating material with ID: ${id}`, updateData);
+    const supabase = await createClient();
+
+    // Check session
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות לערוך תכנים" };
+    }
+
+    // Prepare update data
+    const materialUpdateData = {
+      title: updateData.title,
+      description: updateData.description,
+      main_topic_id: updateData.mainTopicId || null,
+      estimated_time: updateData.estimatedTime,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Update material
+    const { data: updatedMaterial, error: updateError } = await supabase
+      .from("materials")
+      .update(materialUpdateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating material:", updateError);
+      return { error: "שגיאה בעדכון החומר" };
+    }
+
+    // Update target audiences if provided
+    if (updateData.targetAudiences) {
+      // Delete existing target audience associations
+      const { error: deleteError } = await supabase
+        .from("material_target_audiences")
+        .delete()
+        .eq("material_id", id);
+
+      if (deleteError) {
+        console.error("Error deleting existing target audiences:", deleteError);
+        return { error: "שגיאה בעדכון קהלי יעד" };
+      }
+
+      // Add new target audience associations
+      if (updateData.targetAudiences.length > 0) {
+        const targetAudienceData = updateData.targetAudiences.map(
+          (audienceId) => ({
+            material_id: id,
+            target_audience_id: audienceId,
+          })
+        );
+
+        const { error: insertError } = await supabase
+          .from("material_target_audiences")
+          .insert(targetAudienceData);
+
+        if (insertError) {
+          console.error("Error inserting target audiences:", insertError);
+          return { error: "שגיאה בהוספת קהלי יעד" };
+        }
+      }
+    }
+
+    revalidatePath("/dashboard/content");
+    return { data: updatedMaterial };
+  } catch (error) {
+    console.error(`Exception in updateMaterial for ID ${id}:`, error);
+    return { error: "שגיאה בעדכון החומר" };
   }
 }

@@ -27,7 +27,6 @@ function DashboardNav() {
   const [error, setError] = useState(null);
   const router = useRouter();
   const currentPath = usePathname();
-  const [openSubmenus, setOpenSubmenus] = useState({});
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -58,21 +57,6 @@ function DashboardNav() {
     fetchUserRole();
   }, [router]);
 
-  // אוטומטית פתח את התת-תפריט אם נמצאים בדף שקשור אליו
-  useEffect(() => {
-    const menuItems = getMenuItems();
-    menuItems.forEach((item) => {
-      if (item.children) {
-        const isChildActive = item.children.some((child) =>
-          currentPath.startsWith(child.href)
-        );
-        if (isChildActive) {
-          setOpenSubmenus((prev) => ({ ...prev, [item.href]: true }));
-        }
-      }
-    });
-  }, [currentPath]);
-
   const getMenuItems = () => {
     let items = [...NAVIGATION_CONFIG.base];
 
@@ -90,81 +74,39 @@ function DashboardNav() {
     return items;
   };
 
-  const toggleSubmenu = (submenu) => {
-    setOpenSubmenus((prev) => ({
-      ...prev,
-      [submenu]: !prev[submenu],
-    }));
-  };
-
   const renderMenuItem = (item) => {
     const Icon = Icons[item.icon];
     const isActive = currentPath === item.href;
-    const hasChildren = item.children && item.children.length > 0;
-    const isSubmenuOpen = openSubmenus[item.href];
-    const showApprovalBadge =
-      item.name === "אישור תכנים" ||
-      item.href === "/dashboard/content/approve" ||
-      item.href === "/dashboard/users";
+
+    // Determine which badge type to show based on the menu item
+    const getBadgeType = () => {
+      if (item.href === "/dashboard/users") {
+        return "users";
+      } else if (item.href === "/dashboard/content/approve/materials") {
+        return "materials";
+      } else if (item.href === "/dashboard/content/approve/topics") {
+        return "topics";
+      }
+      return null;
+    };
+
+    const badgeType = getBadgeType();
 
     return (
       <li key={item.name}>
-        {hasChildren ? (
-          <div>
-            <button
-              onClick={() => toggleSubmenu(item.href)}
-              className={cn(
-                "flex items-center justify-between w-full p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
-                isActive && "bg-gray-100"
-              )}>
-              <div className="flex items-center space-x-3 relative">
-                <Icon className="h-5 w-5 ml-3" />
-                <span>{item.name}</span>
-                {showApprovalBadge && <ApprovalBadge />}
-              </div>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  isSubmenuOpen && "transform rotate-180"
-                )}
-              />
-            </button>
-            {isSubmenuOpen && (
-              <ul className="mr-4 mt-2 space-y-1">
-                {item.children.map((child) => {
-                  const ChildIcon = Icons[child.icon];
-                  const isChildActive = currentPath === child.href;
-                  return (
-                    <li key={child.name}>
-                      <Link
-                        href={child.href}
-                        className={cn(
-                          "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
-                          isChildActive && "bg-gray-100"
-                        )}>
-                        <ChildIcon className="h-5 w-5 ml-3" />
-                        <span>{child.name}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+        <Link
+          href={item.href}
+          className={cn(
+            "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
+            isActive && "bg-gray-100"
+          )}>
+          <div className="flex items-center space-x-3 relative">
+            <Icon className="h-5 w-5 ml-3" />
+
+            {badgeType && <ApprovalBadge type={badgeType} />}
+            <span>{item.name}</span>
           </div>
-        ) : (
-          <Link
-            href={item.href}
-            className={cn(
-              "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
-              isActive && "bg-gray-100"
-            )}>
-            <div className="flex items-center space-x-3 relative">
-              <Icon className="h-5 w-5 ml-3" />
-              <span>{item.name}</span>
-              {showApprovalBadge && <ApprovalBadge />}
-            </div>
-          </Link>
-        )}
+        </Link>
       </li>
     );
   };

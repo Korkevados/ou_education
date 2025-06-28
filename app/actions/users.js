@@ -675,3 +675,140 @@ export async function deactivateUser(userId) {
     return { error: "שגיאה כללית בהשבתת המשתמש" };
   }
 }
+
+/**
+ * Permanently deletes a user and all related data
+ * Deletes in order: pending topics, comments, likes, material statuses, materials, then user
+ */
+export async function deleteUserPermanently(userId) {
+  console.log("=== deleteUserPermanently: FUNCTION START ===");
+  try {
+    const supabase = await supabaseAdmin();
+    console.log(
+      `deleteUserPermanently: Attempting to delete user with ID ${userId}`
+    );
+
+    // First check if the user exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from("users")
+      .select("id, full_name, supabase_id")
+      .eq("id", userId)
+      .single();
+
+    if (checkError) {
+      console.log(
+        `deleteUserPermanently: Error checking if user exists:`,
+        checkError
+      );
+      return { error: "שגיאה בבדיקת קיום משתמש" };
+    }
+
+    if (!existingUser) {
+      console.log(`deleteUserPermanently: User with ID ${userId} not found`);
+      return { error: "משתמש לא נמצא" };
+    }
+
+    console.log(
+      `deleteUserPermanently: Starting deletion process for user ${existingUser.full_name}`
+    );
+
+    // 1. Delete pending topics created by this user
+    console.log("deleteUserPermanently: Deleting pending topics...");
+    const { error: pendingTopicsError } = await supabase
+      .from("pending_topics")
+      .delete()
+      .eq("created_by", existingUser.supabase_id);
+
+    if (pendingTopicsError) {
+      console.log(
+        "deleteUserPermanently: Error deleting pending topics:",
+        pendingTopicsError
+      );
+      return { error: "שגיאה במחיקת נושאים ממתינים" };
+    }
+
+    // 2. Delete comments by this user
+    console.log("deleteUserPermanently: Deleting comments...");
+    const { error: commentsError } = await supabase
+      .from("comments")
+      .delete()
+      .eq("user_id", existingUser.supabase_id);
+
+    if (commentsError) {
+      console.log(
+        "deleteUserPermanently: Error deleting comments:",
+        commentsError
+      );
+      return { error: "שגיאה במחיקת תגובות" };
+    }
+
+    // 3. Delete likes by this user
+    console.log("deleteUserPermanently: Deleting likes...");
+    const { error: likesError } = await supabase
+      .from("likes")
+      .delete()
+      .eq("user_id", existingUser.supabase_id);
+
+    if (likesError) {
+      console.log("deleteUserPermanently: Error deleting likes:", likesError);
+      return { error: "שגיאה במחיקת לייקים" };
+    }
+
+    // 4. Delete material statuses updated by this user
+    console.log("deleteUserPermanently: Deleting material statuses...");
+    const { error: statusesError } = await supabase
+      .from("material_statuses")
+      .delete()
+      .eq("updated_by", existingUser.supabase_id);
+
+    if (statusesError) {
+      console.log(
+        "deleteUserPermanently: Error deleting material statuses:",
+        statusesError
+      );
+      return { error: "שגיאה במחיקת סטטוסי תכנים" };
+    }
+
+    // 5. Delete materials created by this user
+    console.log("deleteUserPermanently: Deleting materials...");
+    const { error: materialsError } = await supabase
+      .from("materials")
+      .delete()
+      .eq("creator_id", existingUser.supabase_id);
+
+    if (materialsError) {
+      console.log(
+        "deleteUserPermanently: Error deleting materials:",
+        materialsError
+      );
+      return { error: "שגיאה במחיקת תכנים" };
+    }
+
+    // 6. Finally, delete the user
+    console.log("deleteUserPermanently: Deleting user...");
+    const { error: userError } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (userError) {
+      console.log("deleteUserPermanently: Error deleting user:", userError);
+      return { error: "שגיאה במחיקת המשתמש" };
+    }
+
+    console.log(
+      `deleteUserPermanently: User ${existingUser.full_name} and all related data successfully deleted`
+    );
+    console.log(
+      "=== deleteUserPermanently: FUNCTION COMPLETED SUCCESSFULLY ==="
+    );
+
+    return {
+      success: true,
+      message: "המשתמש וכל הנתונים הקשורים נמחקו בהצלחה",
+    };
+  } catch (error) {
+    console.error("=== deleteUserPermanently: GENERAL ERROR ===", error);
+    return { error: "שגיאה כללית במחיקת המשתמש" };
+  }
+}

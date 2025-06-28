@@ -8,12 +8,46 @@ import { ContentCard } from "./ContentCard";
 import { ContentModal } from "./ContentModal";
 import { Button } from "./button";
 
-export function ContentCarousel({ title, materials }) {
+export function ContentCarousel({
+  title,
+  materials,
+  onMaterialDeleted,
+  onMaterialUpdated,
+  isAdmin = false,
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [prevBtnEnabled, setPrevBtnEnabled] = useState(true);
   const [nextBtnEnabled, setNextBtnEnabled] = useState(true);
+  const [localMaterials, setLocalMaterials] = useState(materials);
+
+  // Update local materials when props change
+  useEffect(() => {
+    setLocalMaterials(materials);
+  }, [materials]);
+
+  // Handle material deletion
+  const handleMaterialDeleted = (materialId) => {
+    setLocalMaterials((prev) =>
+      prev.filter((material) => material.id !== materialId)
+    );
+    if (onMaterialDeleted) {
+      onMaterialDeleted(materialId);
+    }
+  };
+
+  // Handle material update
+  const handleMaterialUpdated = (materialId, updatedData) => {
+    setLocalMaterials((prev) =>
+      prev.map((material) =>
+        material.id === materialId ? { ...material, ...updatedData } : material
+      )
+    );
+    if (onMaterialUpdated) {
+      onMaterialUpdated(materialId, updatedData);
+    }
+  };
 
   // Embla Carousel setup with improved options for natural feeling
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -24,7 +58,7 @@ export function ContentCarousel({ title, materials }) {
     dragFree: false,
     direction: "rtl", // עברית - מימין לשמאל
     skipSnaps: false, // Ensure we always land perfectly on a snap point
-    startIndex: Math.floor(materials?.length / 2) || 0, // Start with center item in focus
+    startIndex: Math.floor(localMaterials?.length / 2) || 0, // Start with center item in focus
     inViewThreshold: 0.7, // When 70% of the slide is in view, consider it in view
     speed: 15, // Slow down the animation for smoother transitions
   });
@@ -70,7 +104,7 @@ export function ContentCarousel({ title, materials }) {
     setModalOpen(true);
   };
 
-  if (!materials || materials.length === 0) {
+  if (!localMaterials || localMaterials.length === 0) {
     return null;
   }
 
@@ -79,15 +113,15 @@ export function ContentCarousel({ title, materials }) {
     if (!emblaApi) return { width: "280px" };
 
     // Get the actual index considering possible duplication
-    const normalizedIndex = index % materials.length;
-    const isCenter = currentIndex % materials.length === normalizedIndex;
+    const normalizedIndex = index % localMaterials.length;
+    const isCenter = currentIndex % localMaterials.length === normalizedIndex;
 
     // Calculate distance in a circular way (handling loop)
     let distance = Math.abs(
-      (currentIndex % materials.length) - normalizedIndex
+      (currentIndex % localMaterials.length) - normalizedIndex
     );
     // Adjust for wrap-around cases
-    distance = Math.min(distance, materials.length - distance);
+    distance = Math.min(distance, localMaterials.length - distance);
 
     // Create smoother scaling gradient as items get further from center
     const scale = isCenter ? 1 : Math.max(0.75, 1 - distance * 0.12);
@@ -141,7 +175,7 @@ export function ContentCarousel({ title, materials }) {
         {/* Main Carousel with additional padding for visibility of side items */}
         <div className="overflow-hidden px-16" ref={emblaRef}>
           <div className="flex py-8">
-            {materials.map((material, index) => (
+            {localMaterials.map((material, index) => (
               <div
                 key={`${material.id}-${index}`}
                 className="flex-shrink-0 px-4 transition-all duration-300 ease-out mx-auto"
@@ -169,6 +203,9 @@ export function ContentCarousel({ title, materials }) {
           material={selectedMaterial}
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
+          onMaterialDeleted={handleMaterialDeleted}
+          onMaterialUpdated={handleMaterialUpdated}
+          isAdmin={isAdmin}
         />
       )}
     </div>

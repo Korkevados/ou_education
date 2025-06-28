@@ -441,3 +441,424 @@ export async function reassignTopic(pendingTopicId, newTopicId, isMainTopic) {
     return { error: "שגיאה בשיוך מחדש של הנושא" };
   }
 }
+
+// Function to create a main topic
+export async function createMainTopic(name) {
+  try {
+    console.log("Creating main topic:", name);
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות ליצור נושאים" };
+    }
+
+    // Check if topic already exists
+    const { data: existingTopic, error: checkError } = await supabase
+      .from("main_topics")
+      .select("id")
+      .eq("name", name)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing topic:", checkError);
+      return { error: "שגיאה בבדיקת קיום נושא" };
+    }
+
+    if (existingTopic) {
+      return { error: "נושא עם שם זה כבר קיים" };
+    }
+
+    const { data, error } = await supabase
+      .from("main_topics")
+      .insert({ name })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating main topic:", error);
+      return { error: "שגיאה ביצירת נושא ראשי" };
+    }
+
+    return { data };
+  } catch (error) {
+    console.error("Exception in createMainTopic:", error);
+    return { error: "שגיאה ביצירת נושא ראשי" };
+  }
+}
+
+// Function to create a sub topic
+export async function createSubTopic(name, mainTopicId) {
+  try {
+    console.log("Creating sub topic:", name, "for main topic:", mainTopicId);
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות ליצור נושאים" };
+    }
+
+    // Check if sub topic already exists for this main topic
+    const { data: existingTopic, error: checkError } = await supabase
+      .from("sub_topics")
+      .select("id")
+      .eq("name", name)
+      .eq("main_topic_id", mainTopicId)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing sub topic:", checkError);
+      return { error: "שגיאה בבדיקת קיום נושא משני" };
+    }
+
+    if (existingTopic) {
+      return { error: "נושא משני עם שם זה כבר קיים תחת הנושא הראשי הזה" };
+    }
+
+    const { data, error } = await supabase
+      .from("sub_topics")
+      .insert({ name, main_topic_id: mainTopicId })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating sub topic:", error);
+      return { error: "שגיאה ביצירת נושא משני" };
+    }
+
+    return { data };
+  } catch (error) {
+    console.error("Exception in createSubTopic:", error);
+    return { error: "שגיאה ביצירת נושא משני" };
+  }
+}
+
+// Function to update a main topic
+export async function updateMainTopic(id, name) {
+  try {
+    console.log("Updating main topic:", id, "to name:", name);
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות לערוך נושאים" };
+    }
+
+    // Check if topic already exists with different ID
+    const { data: existingTopic, error: checkError } = await supabase
+      .from("main_topics")
+      .select("id")
+      .eq("name", name)
+      .neq("id", id)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing topic:", checkError);
+      return { error: "שגיאה בבדיקת קיום נושא" };
+    }
+
+    if (existingTopic) {
+      return { error: "נושא עם שם זה כבר קיים" };
+    }
+
+    const { data, error } = await supabase
+      .from("main_topics")
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating main topic:", error);
+      return { error: "שגיאה בעדכון נושא ראשי" };
+    }
+
+    return { data };
+  } catch (error) {
+    console.error("Exception in updateMainTopic:", error);
+    return { error: "שגיאה בעדכון נושא ראשי" };
+  }
+}
+
+// Function to update a sub topic
+export async function updateSubTopic(id, name, mainTopicId) {
+  try {
+    console.log(
+      "Updating sub topic:",
+      id,
+      "to name:",
+      name,
+      "main topic:",
+      mainTopicId
+    );
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות לערוך נושאים" };
+    }
+
+    // Check if sub topic already exists for this main topic with different ID
+    const { data: existingTopic, error: checkError } = await supabase
+      .from("sub_topics")
+      .select("id")
+      .eq("name", name)
+      .eq("main_topic_id", mainTopicId)
+      .neq("id", id)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing sub topic:", checkError);
+      return { error: "שגיאה בבדיקת קיום נושא משני" };
+    }
+
+    if (existingTopic) {
+      return { error: "נושא משני עם שם זה כבר קיים תחת הנושא הראשי הזה" };
+    }
+
+    const { data, error } = await supabase
+      .from("sub_topics")
+      .update({
+        name,
+        main_topic_id: mainTopicId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating sub topic:", error);
+      return { error: "שגיאה בעדכון נושא משני" };
+    }
+
+    return { data };
+  } catch (error) {
+    console.error("Exception in updateSubTopic:", error);
+    return { error: "שגיאה בעדכון נושא משני" };
+  }
+}
+
+// Function to delete a main topic
+export async function deleteMainTopic(id) {
+  try {
+    console.log("Deleting main topic:", id);
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות למחוק נושאים" };
+    }
+
+    // Check if topic is used in materials
+    const { data: materialsUsingTopic, error: materialsError } = await supabase
+      .from("materials")
+      .select("id")
+      .eq("main_topic_id", id)
+      .limit(1);
+
+    if (materialsError) {
+      console.error("Error checking materials using topic:", materialsError);
+      return { error: "שגיאה בבדיקת שימוש בנושא" };
+    }
+
+    if (materialsUsingTopic && materialsUsingTopic.length > 0) {
+      return { error: "לא ניתן למחוק נושא שמשמש בתכנים" };
+    }
+
+    // Check if topic has sub topics
+    const { data: subTopics, error: subTopicsError } = await supabase
+      .from("sub_topics")
+      .select("id")
+      .eq("main_topic_id", id)
+      .limit(1);
+
+    if (subTopicsError) {
+      console.error("Error checking sub topics:", subTopicsError);
+      return { error: "שגיאה בבדיקת תתי נושאים" };
+    }
+
+    if (subTopics && subTopics.length > 0) {
+      return { error: "לא ניתן למחוק נושא שיש לו תתי נושאים" };
+    }
+
+    const { error } = await supabase.from("main_topics").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting main topic:", error);
+      return { error: "שגיאה במחיקת נושא ראשי" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Exception in deleteMainTopic:", error);
+    return { error: "שגיאה במחיקת נושא ראשי" };
+  }
+}
+
+// Function to delete a sub topic
+export async function deleteSubTopic(id) {
+  try {
+    console.log("Deleting sub topic:", id);
+    const supabase = await createClient();
+
+    const { data: session, error: sessionError } =
+      await supabase.auth.getUser();
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError);
+      return { error: "אין הרשאה. נא להתחבר מחדש." };
+    }
+
+    // Check if user is admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("supabase_id", session.user.id)
+      .single();
+
+    if (userError || !userData) {
+      console.error("Error fetching user role:", userError);
+      return { error: "שגיאה בבדיקת הרשאות" };
+    }
+
+    if (
+      userData.user_type !== "ADMIN" &&
+      userData.user_type !== "TRAINING_MANAGER"
+    ) {
+      return { error: "אין לך הרשאות למחוק נושאים" };
+    }
+
+    // Check if topic is used in materials
+    const { data: materialsUsingTopic, error: materialsError } = await supabase
+      .from("materials")
+      .select("id")
+      .eq("sub_topic_id", id)
+      .limit(1);
+
+    if (materialsError) {
+      console.error("Error checking materials using topic:", materialsError);
+      return { error: "שגיאה בבדיקת שימוש בנושא" };
+    }
+
+    if (materialsUsingTopic && materialsUsingTopic.length > 0) {
+      return { error: "לא ניתן למחוק נושא שמשמש בתכנים" };
+    }
+
+    const { error } = await supabase.from("sub_topics").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting sub topic:", error);
+      return { error: "שגיאה במחיקת נושא משני" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Exception in deleteSubTopic:", error);
+    return { error: "שגיאה במחיקת נושא משני" };
+  }
+}

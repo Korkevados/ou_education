@@ -2,9 +2,12 @@
 
 "use client";
 import Image from "next/image";
-import { Clock, ThumbsUp, MessageCircle, FileIcon } from "lucide-react";
+import { Clock, ThumbsUp, MessageCircle, FileIcon, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Button } from "./button";
+import createSupaClient from "@/lib/supabase/supabase";
+import { toast } from "sonner";
 
 export function ContentCard({ material, onClick, isFocused = false }) {
   const [isHovering, setIsHovering] = useState(false);
@@ -40,6 +43,38 @@ export function ContentCard({ material, onClick, isFocused = false }) {
 
   // בדיקה האם יש תמונת תצוגה מקדימה
   const hasPreviewImage = material.photo_url && !imageError;
+
+  // Handle view content button click
+  const handleViewContent = async (e) => {
+    e.stopPropagation();
+    try {
+      // יצירת כתובת חתומה מהבאקט הפרטי
+      const supabase = await createClient();
+
+      // חילוץ שם הקובץ מה-URL
+      const urlParts = material.url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+
+      // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
+      const { data, error } = await supabase.storage
+        .from("materials")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("שגיאה בפתיחת התוכן");
+        return;
+      }
+
+      if (data) {
+        // פתיחת התוכן בטאב חדש עם הכתובת החתומה
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error viewing content:", error);
+      toast.error("שגיאה בפתיחת התוכן");
+    }
+  };
 
   return (
     <motion.div
@@ -113,6 +148,18 @@ export function ContentCard({ material, onClick, isFocused = false }) {
             <span className="mr-2 text-sm">{material.estimated_time} דקות</span>
           </div>
         </div>
+
+        {/* View Content Button */}
+        <div className="mt-2 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleViewContent}
+            className="w-full text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200">
+            <Eye className="w-3 h-3 ml-1" />
+            צפה בתוכן
+          </Button>
+        </div>
       </div>
 
       {/* Hover Overlay - only show on focused or hovered items */}
@@ -145,6 +192,14 @@ export function ContentCard({ material, onClick, isFocused = false }) {
                 </span>
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewContent}
+              className="mt-4 text-white border-white hover:bg-white hover:text-black transition-colors duration-200">
+              <Eye className="w-4 h-4 ml-1" />
+              צפה בתוכן
+            </Button>
           </div>
         </motion.div>
       )}

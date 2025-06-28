@@ -42,3 +42,63 @@ body {
     display: none; /* Chrome, Safari and Opera */
   }
 }
+
+/* Force select dropdowns to open downward */
+[data-radix-select-content] {
+  transform-origin: top !important;
+}
+
+[data-radix-select-content][data-side="top"] {
+  transform: translateY(-100%) !important;
+}
+
+/* Ensure proper z-index and positioning */
+[data-radix-select-portal] {
+  z-index: 9999 !important;
+}
+
+/* Override Radix UI positioning to force downward opening */
+[data-radix-popper-content-wrapper] {
+  transform-origin: top !important;
+}
+
+/* Force all select dropdowns to open downward */
+[data-radix-select-content][data-state="open"] {
+  animation: slideDown 0.2s ease-out !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar for select dropdowns */
+[data-radix-select-viewport]::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox scrollbar */
+[data-radix-select-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}

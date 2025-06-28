@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download, Check, X, AlertCircle } from "lucide-react";
+import { Download, Check, X, AlertCircle, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   approveMaterialContent,
@@ -29,6 +29,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import createSupaClient from "@/lib/supabase/supabase";
 
 export function MaterialsTable({ materials, loading, onMaterialApproved }) {
   const [selectedMaterials, setSelectedMaterials] = useState([]);
@@ -140,6 +141,44 @@ export function MaterialsTable({ materials, loading, onMaterialApproved }) {
     window.open(material.url, "_blank");
   };
 
+  const handleViewContent = async (material) => {
+    try {
+      // יצירת כתובת חתומה מהבאקט הפרטי
+      const supabase = await createSupaClient();
+
+      // חילוץ שם הקובץ מה-URL
+      const urlParts = material.url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+
+      // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
+      const { data, error } = await supabase.storage
+        .from("content")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast({
+          title: "שגיאה",
+          description: "שגיאה בפתיחת התוכן",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data) {
+        // פתיחת התוכן בטאב חדש עם הכתובת החתומה
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error viewing content:", error);
+      toast({
+        title: "שגיאה",
+        description: "שגיאה בפתיחת התוכן",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {selectedMaterials.length > 0 && (
@@ -211,6 +250,13 @@ export function MaterialsTable({ materials, loading, onMaterialApproved }) {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewContent(material)}
+                      title="צפה בתוכן">
+                      <Eye className="w-4 h-4 text-blue-600" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

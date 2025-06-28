@@ -1,7 +1,7 @@
 /** @format */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight,
@@ -9,27 +9,62 @@ import {
   Clock,
   ThumbsUp,
   MessageCircle,
+  Eye,
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { ContentModal } from "@/components/ui/ContentModal";
+import createSupaClient from "@/lib/supabase/supabase";
+import { toast } from "sonner";
 
-export default function SingleItemCarousel({ materials = [] }) {
+export default function SingleItemCarousel({
+  materials = [],
+  onMaterialDeleted,
+  onMaterialUpdated,
+}) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [localMaterials, setLocalMaterials] = useState(materials);
+
+  // Update local materials when props change
+  useEffect(() => {
+    setLocalMaterials(materials);
+  }, [materials]);
+
+  // Handle material deletion
+  const handleMaterialDeleted = (materialId) => {
+    setLocalMaterials((prev) =>
+      prev.filter((material) => material.id !== materialId)
+    );
+    if (onMaterialDeleted) {
+      onMaterialDeleted(materialId);
+    }
+  };
+
+  // Handle material update
+  const handleMaterialUpdated = (materialId, updatedData) => {
+    setLocalMaterials((prev) =>
+      prev.map((material) =>
+        material.id === materialId ? { ...material, ...updatedData } : material
+      )
+    );
+    if (onMaterialUpdated) {
+      onMaterialUpdated(materialId, updatedData);
+    }
+  };
 
   const goToNext = (e) => {
     e.stopPropagation();
     setCurrentIndex((prevIndex) =>
-      prevIndex === materials.length - 1 ? 0 : prevIndex + 1
+      prevIndex === localMaterials.length - 1 ? 0 : prevIndex + 1
     );
   };
 
   const goToPrevious = (e) => {
     e.stopPropagation();
     setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? materials.length - 1 : prevIndex - 1
+      prevIndex === 0 ? localMaterials.length - 1 : prevIndex - 1
     );
   };
 
@@ -41,13 +76,44 @@ export default function SingleItemCarousel({ materials = [] }) {
     setIsModalOpen(false);
   };
 
-  if (materials.length === 0) {
+  const handleViewContent = async (e) => {
+    e.stopPropagation();
+    try {
+      // יצירת כתובת חתומה מהבאקט הפרטי
+      const supabase = await createSupaClient();
+
+      // חילוץ שם הקובץ מה-URL
+      const urlParts = currentMaterial.url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+
+      // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
+      const { data, error } = await supabase.storage
+        .from("materials")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("שגיאה בפתיחת התוכן");
+        return;
+      }
+
+      if (data) {
+        // פתיחת התוכן בטאב חדש עם הכתובת החתומה
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error viewing content:", error);
+      toast.error("שגיאה בפתיחת התוכן");
+    }
+  };
+
+  if (localMaterials.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">אין תכנים להצגה</div>
     );
   }
 
-  const currentMaterial = materials[currentIndex];
+  const currentMaterial = localMaterials[currentIndex];
 
   // Format the date
   const formatDate = (dateString) => {
@@ -131,6 +197,37 @@ export default function SingleItemCarousel({ materials = [] }) {
                 </div>
               </div>
             </div>
+
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center text-blue-600">
+                  <ThumbsUp size={16} />
+                  <span className="mr-2 text-sm">
+                    {currentMaterial.likes_count || 0}
+                  </span>
+                </div>
+                <div className="flex items-center text-gray-500">
+                  <MessageCircle size={16} />
+                  <span className="mr-2 text-sm">
+                    {currentMaterial.comments_count || 0}
+                  </span>
+                </div>
+                <div className="flex items-center text-gray-500">
+                  <Clock size={16} />
+                  <span className="mr-2 text-sm">
+                    {currentMaterial.estimated_time} דקות
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewContent}
+                className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200">
+                <Eye className="w-4 h-4 ml-1" />
+                צפה בתוכן
+              </Button>
+            </div>
           </Card>
         </motion.div>
       </AnimatePresence>
@@ -158,7 +255,7 @@ export default function SingleItemCarousel({ materials = [] }) {
 
       {/* Indicators */}
       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1.5">
-        {materials.map((_, index) => (
+        {localMaterials.map((_, index) => (
           <button
             key={index}
             onClick={(e) => {
@@ -179,6 +276,8 @@ export default function SingleItemCarousel({ materials = [] }) {
           material={currentMaterial}
           isOpen={isModalOpen}
           onClose={closeModal}
+          onMaterialDeleted={handleMaterialDeleted}
+          onMaterialUpdated={handleMaterialUpdated}
         />
       )}
     </div>

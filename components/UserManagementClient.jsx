@@ -32,6 +32,7 @@ import {
   activateUser,
   deactivateUser,
   getUsers,
+  deleteUserPermanently,
 } from "@/app/actions/users";
 import { toast } from "sonner";
 import {
@@ -250,6 +251,31 @@ export default function UserManagementClient({ initialUsers }) {
     } catch (error) {
       console.error("Error deactivating user:", error);
       toast.error("שגיאה בהשבתת המשתמש");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      setIsLoading(true);
+      const { error } = await deleteUserPermanently(userId);
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      // Remove the user from the list
+      setUsers(users.filter((user) => user.id !== userId));
+
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
+
+      toast.success("המשתמש נמחק בהצלחה");
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("שגיאה במחיקת המשתמש");
     } finally {
       setIsLoading(false);
     }
@@ -510,6 +536,19 @@ export default function UserManagementClient({ initialUsers }) {
                           השבת משתמש
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem
+                        className="text-right text-red-600 hover:bg-slate-100 cursor-pointer"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `האם אתה בטוח שברצונך למחוק את המשתמש "${user.full_name}"? פעולה זו תמחק את כל הנתונים הקשורים אליו ולא ניתן יהיה לשחזר אותם.`
+                            )
+                          ) {
+                            handleDeleteUser(user.id);
+                          }
+                        }}>
+                        מחק משתמש
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

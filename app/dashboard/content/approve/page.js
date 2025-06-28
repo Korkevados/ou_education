@@ -24,20 +24,31 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Plus,
   Search,
+  MoreVertical,
   Loader2,
   Eye,
+  Trash,
+  Clock,
+  FileText,
+  LayoutGrid,
+  List,
   CheckCircle,
   XCircle,
-  FileText,
-  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getPendingMaterials,
   approveMaterial,
   rejectMaterial,
+  getMaterials,
+  deleteMaterial,
 } from "@/app/actions/materials";
+import { getMainTopics } from "@/app/actions/topics";
+import { ContentCarousel } from "@/components/ui/ContentCarousel";
+import getUserDetails from "@/app/actions/auth";
+import { createClient } from "@/lib/supabase/supabase";
 
 export default function ContentApprovalPage() {
   const router = useRouter();
@@ -49,6 +60,7 @@ export default function ContentApprovalPage() {
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showViewDialog, setShowViewDialog] = useState(false);
 
   useEffect(() => {
     const loadPendingMaterials = async () => {
@@ -96,7 +108,38 @@ export default function ContentApprovalPage() {
   };
 
   const handleView = (material) => {
-    window.open(material.url, "_blank");
+    setSelectedMaterial(material);
+    setShowViewDialog(true);
+  };
+
+  const handleViewContent = async (material) => {
+    try {
+      // יצירת כתובת חתומה מהבאקט הפרטי
+      const supabase = await createClient();
+
+      // חילוץ שם הקובץ מה-URL
+      const urlParts = material.url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+      console.log(fileName);
+      // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
+      const { data, error } = await supabase.storage
+        .from("content")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("שגיאה בפתיחת התוכן");
+        return;
+      }
+
+      if (data) {
+        // פתיחת התוכן בטאב חדש עם הכתובת החתומה
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error viewing content:", error);
+      toast.error("שגיאה בפתיחת התוכן");
+    }
   };
 
   const handleApprove = async (materialId) => {
@@ -269,6 +312,13 @@ export default function ContentApprovalPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewContent(material)}
+                              title="צפה בתוכן">
+                              <Eye className="h-4 w-4 text-blue-600" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

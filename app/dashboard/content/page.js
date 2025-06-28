@@ -42,11 +42,14 @@ import {
   FileText,
   LayoutGrid,
   List,
+  Edit,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMaterials, deleteMaterial } from "@/app/actions/materials";
 import { getMainTopics } from "@/app/actions/topics";
 import { ContentCarousel } from "@/components/ui/ContentCarousel";
+import getUserDetails from "@/app/actions/auth";
+import createSupaClient from "@/lib/supabase/supabase";
 
 export default function ContentPage() {
   const router = useRouter();
@@ -59,11 +62,24 @@ export default function ContentPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'table'
+  const [userRole, setUserRole] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+
+        // Check user role first
+        const userDetails = await getUserDetails();
+        if (userDetails && userDetails.role) {
+          setUserRole(userDetails.role);
+          setIsAdmin(
+            userDetails.role === "ADMIN" || userDetails.role === "מנהל כללי"
+          );
+        }
 
         // טעינת כל החומרים
         const { data: materialsData, error: materialsError } =
@@ -118,8 +134,38 @@ export default function ContentPage() {
   };
 
   const handleView = (material) => {
-    // Open material in a new tab
-    window.open(material.url, "_blank");
+    setSelectedMaterial(material);
+    setShowViewDialog(true);
+  };
+
+  const handleViewContent = async (material) => {
+    try {
+      // יצירת כתובת חתומה מהבאקט הפרטי
+      const supabase = await createSupaClient();
+
+      // חילוץ שם הקובץ מה-URL
+      const urlParts = material.url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+      console.log(fileName);
+      // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
+      const { data, error } = await supabase.storage
+        .from("content")
+        .createSignedUrl(fileName, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("שגיאה בפתיחת התוכן");
+        return;
+      }
+
+      if (data) {
+        // פתיחת התוכן בטאב חדש עם הכתובת החתומה
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error viewing content:", error);
+      toast.error("שגיאה בפתיחת התוכן");
+    }
   };
 
   const handleDelete = async () => {
@@ -153,6 +199,30 @@ export default function ContentPage() {
   const confirmDelete = (id) => {
     setDeleteId(id);
     setShowDeleteDialog(true);
+  };
+
+  // Handle material updates
+  const handleMaterialUpdated = (materialId, updatedData) => {
+    setMaterials((prev) =>
+      prev.map((material) =>
+        material.id === materialId ? { ...material, ...updatedData } : material
+      )
+    );
+    setFilteredMaterials((prev) =>
+      prev.map((material) =>
+        material.id === materialId ? { ...material, ...updatedData } : material
+      )
+    );
+  };
+
+  // Handle material deletions
+  const handleMaterialDeleted = (materialId) => {
+    setMaterials((prev) =>
+      prev.filter((material) => material.id !== materialId)
+    );
+    setFilteredMaterials((prev) =>
+      prev.filter((material) => material.id !== materialId)
+    );
   };
 
   // Format date to readable format
@@ -269,6 +339,9 @@ export default function ContentPage() {
                     <ContentCarousel
                       title="נוסף לאחרונה"
                       materials={latestMaterials}
+                      isAdmin={isAdmin}
+                      onMaterialUpdated={handleMaterialUpdated}
+                      onMaterialDeleted={handleMaterialDeleted}
                     />
                   )}
 
@@ -276,6 +349,9 @@ export default function ContentPage() {
                     <ContentCarousel
                       title="הכי פופולרי"
                       materials={topRatedMaterials}
+                      isAdmin={isAdmin}
+                      onMaterialUpdated={handleMaterialUpdated}
+                      onMaterialDeleted={handleMaterialDeleted}
                     />
                   )}
 
@@ -284,6 +360,9 @@ export default function ContentPage() {
                       key={group.topic.id}
                       title={group.topic.name}
                       materials={group.materials}
+                      isAdmin={isAdmin}
+                      onMaterialUpdated={handleMaterialUpdated}
+                      onMaterialDeleted={handleMaterialDeleted}
                     />
                   ))}
                 </div>
@@ -345,31 +424,38 @@ export default function ContentPage() {
                               <TableCell>
                                 {formatDate(material.created_at)}
                               </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      className="h-8 w-8 p-0">
-                                      <span className="sr-only">פתח תפריט</span>
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => handleView(material)}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      <span>צפייה</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        confirmDelete(material.id)
-                                      }>
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      <span>מחיקה</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                              <TableCell className="text-left">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleViewContent(material)}
+                                    title="צפה בתוכן">
+                                    <Eye className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleView(material)}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  {isAdmin && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEdit(material)}>
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => confirmDelete(material)}>
+                                        <Trash className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
