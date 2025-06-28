@@ -88,7 +88,7 @@ export default function SingleItemCarousel({
 
       // יצירת כתובת חתומה לתקופה של שעה (3600 שניות)
       const { data, error } = await supabase.storage
-        .from("materials")
+        .from("content")
         .createSignedUrl(fileName, 3600);
 
       if (error) {
@@ -136,94 +136,44 @@ export default function SingleItemCarousel({
           transition={{ duration: 0.3 }}
           className="h-full">
           <Card
-            className="h-full p-4 flex flex-col justify-between cursor-pointer hover:shadow-lg transition-shadow"
+            className="h-full p-4 flex flex-col cursor-pointer hover:shadow-lg transition-shadow"
             onClick={openModal}>
-            <div className="mb-2">
-              <h3 className="text-lg font-bold text-right mb-1">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-right mb-2 line-clamp-2">
                 {currentMaterial.title}
               </h3>
-              <p className="text-sm text-gray-600 line-clamp-2 text-right">
+              <p className="text-sm text-gray-600 line-clamp-3 text-right mb-3">
                 {currentMaterial.description}
               </p>
-            </div>
 
-            {/* Add image display */}
-            {currentMaterial.photo_url && (
-              <div className="relative w-full h-32 my-2 rounded-md overflow-hidden">
-                <Image
-                  src={currentMaterial.photo_url}
-                  alt={currentMaterial.title}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            )}
+              {/* Add image display */}
+              {currentMaterial.photo_url && (
+                <div className="relative w-full h-40 mb-3 rounded-md overflow-hidden">
+                  <Image
+                    src={currentMaterial.photo_url}
+                    alt={currentMaterial.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
 
-            <div className="mt-2">
               {currentMaterial.main_topic && (
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end mb-3">
                   <span className="bg-sky-100 text-sky-800 text-xs px-2 py-1 rounded-full">
                     {currentMaterial.main_topic.name}
                   </span>
                 </div>
               )}
-
-              <div className="flex justify-between items-center">
-                <div className="text-xs text-gray-500">
-                  {formatDate(currentMaterial.created_at)}
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex items-center text-gray-600">
-                    <Clock size={14} className="ml-1" />
-                    <span className="text-xs">
-                      {currentMaterial.estimated_time} דק׳
-                    </span>
-                  </div>
-
-                  <div className="flex items-center text-blue-600">
-                    <ThumbsUp size={14} className="ml-1" />
-                    <span className="text-xs">
-                      {currentMaterial.likes_count || 0}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center text-gray-600">
-                    <MessageCircle size={14} className="ml-1" />
-                    <span className="text-xs">
-                      {currentMaterial.comments_count || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center text-blue-600">
-                  <ThumbsUp size={16} />
-                  <span className="mr-2 text-sm">
-                    {currentMaterial.likes_count || 0}
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-500">
-                  <MessageCircle size={16} />
-                  <span className="mr-2 text-sm">
-                    {currentMaterial.comments_count || 0}
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-500">
-                  <Clock size={16} />
-                  <span className="mr-2 text-sm">
-                    {currentMaterial.estimated_time} דקות
-                  </span>
-                </div>
-              </div>
+            {/* View content button only */}
+            <div className="mt-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleViewContent}
-                className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200">
+                className="w-full hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200">
                 <Eye className="w-4 h-4 ml-1" />
                 צפה בתוכן
               </Button>

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,6 @@ import createSupaClient from "@/lib/supabase/supabase";
 export default function ContentPage() {
   const router = useRouter();
   const [materials, setMaterials] = useState([]);
-  const [filteredMaterials, setFilteredMaterials] = useState([]);
   const [topics, setTopics] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +65,23 @@ export default function ContentPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+
+  // חישוב החומרים המסוננים עם useMemo
+  const filteredMaterials = useMemo(() => {
+    if (searchTerm.trim() === "") {
+      return materials;
+    }
+
+    const lowercaseSearch = searchTerm.toLowerCase();
+    return materials.filter((material) => {
+      return (
+        material.title.toLowerCase().includes(lowercaseSearch) ||
+        material.description.toLowerCase().includes(lowercaseSearch) ||
+        material.main_topic?.name.toLowerCase().includes(lowercaseSearch) ||
+        material.creator?.full_name.toLowerCase().includes(lowercaseSearch)
+      );
+    });
+  }, [searchTerm, materials]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -97,7 +113,6 @@ export default function ContentPage() {
         }
 
         setMaterials(materialsData || []);
-        setFilteredMaterials(materialsData || []);
         setTopics(topicsData || []);
       } catch (error) {
         console.error("Error loading data:", error);
@@ -109,25 +124,6 @@ export default function ContentPage() {
 
     loadData();
   }, []);
-
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredMaterials(materials);
-      return;
-    }
-
-    const lowercaseSearch = searchTerm.toLowerCase();
-    const filtered = materials.filter((material) => {
-      return (
-        material.title.toLowerCase().includes(lowercaseSearch) ||
-        material.description.toLowerCase().includes(lowercaseSearch) ||
-        material.main_topic?.name.toLowerCase().includes(lowercaseSearch) ||
-        material.creator?.full_name.toLowerCase().includes(lowercaseSearch)
-      );
-    });
-
-    setFilteredMaterials(filtered);
-  }, [searchTerm, materials]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -182,9 +178,6 @@ export default function ContentPage() {
 
       // Update materials list
       setMaterials(materials.filter((material) => material.id !== deleteId));
-      setFilteredMaterials(
-        filteredMaterials.filter((material) => material.id !== deleteId)
-      );
       toast.success("התוכן נמחק בהצלחה");
     } catch (error) {
       console.error("Error deleting material:", error);
@@ -201,26 +194,18 @@ export default function ContentPage() {
     setShowDeleteDialog(true);
   };
 
-  // Handle material updates
+  // Handle material updates - מעדכן רק את materials
   const handleMaterialUpdated = (materialId, updatedData) => {
     setMaterials((prev) =>
       prev.map((material) =>
         material.id === materialId ? { ...material, ...updatedData } : material
       )
     );
-    setFilteredMaterials((prev) =>
-      prev.map((material) =>
-        material.id === materialId ? { ...material, ...updatedData } : material
-      )
-    );
   };
 
-  // Handle material deletions
+  // Handle material deletions - מעדכן רק את materials
   const handleMaterialDeleted = (materialId) => {
     setMaterials((prev) =>
-      prev.filter((material) => material.id !== materialId)
-    );
-    setFilteredMaterials((prev) =>
       prev.filter((material) => material.id !== materialId)
     );
   };

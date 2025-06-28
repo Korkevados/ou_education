@@ -26,9 +26,18 @@ export default function Header() {
       } = await supabase.auth.getUser();
       setSession(!!user);
       setIsLoading(false);
+
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        setSession(!!session?.user);
+      });
+
+      return () => subscription.unsubscribe();
     }
     checkAuth();
-  }, [session]);
+  }, []);
 
   // תפריט למשתמש מחובר
   if (session) {
