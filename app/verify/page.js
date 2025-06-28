@@ -50,11 +50,22 @@ export default function VerifyPage() {
         return;
       }
 
-      setDebug("התחברות בוצעה בהצלחה! מעביר לדף הבקרה...");
+      if (result && result.success) {
+        setDebug("התחברות בוצעה בהצלחה! מעביר לדף הבקרה...");
 
-      setTimeout(() => {
-        setShowManualRedirect(true);
-      }, 3000);
+        // הפניה אוטומטית לדף הבקרה
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
+
+        // הצגת כפתור הפניה ידני אם ההפניה האוטומטית לא עובדת
+        setTimeout(() => {
+          setShowManualRedirect(true);
+        }, 3000);
+      } else {
+        setError("שגיאה לא ידועה בתהליך ההתחברות");
+        setIsLoading(false);
+      }
     } catch (error) {
       setError("שגיאה בתהליך ההתחברות");
       setDebug(`Exception: ${error.message}`);

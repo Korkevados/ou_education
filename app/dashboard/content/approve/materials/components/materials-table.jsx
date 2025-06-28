@@ -63,6 +63,9 @@ export function MaterialsTable({ materials, loading, onMaterialApproved }) {
         description: "החומר אושר והועבר לחומרים מאושרים",
       });
 
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
+
       onMaterialApproved(materialId);
     } catch (error) {
       toast({
@@ -94,6 +97,9 @@ export function MaterialsTable({ materials, loading, onMaterialApproved }) {
         title: "החומר נדחה",
         description: "החומר נדחה והערות נשמרו",
       });
+
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
 
       onMaterialApproved(materialId);
       setRejectingMaterial(null);

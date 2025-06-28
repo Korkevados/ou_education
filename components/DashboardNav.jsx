@@ -19,6 +19,7 @@ import {
   FilePlus,
   Compass,
 } from "lucide-react";
+import ApprovalBadge from "./ApprovalBadge";
 
 function DashboardNav() {
   const [userRole, setUserRole] = useState(null);
@@ -101,6 +102,10 @@ function DashboardNav() {
     const isActive = currentPath === item.href;
     const hasChildren = item.children && item.children.length > 0;
     const isSubmenuOpen = openSubmenus[item.href];
+    const showApprovalBadge =
+      item.name === "אישור תכנים" ||
+      item.href === "/dashboard/content/approve" ||
+      item.href === "/dashboard/users";
 
     return (
       <li key={item.name}>
@@ -112,9 +117,10 @@ function DashboardNav() {
                 "flex items-center justify-between w-full p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
                 isActive && "bg-gray-100"
               )}>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 relative">
                 <Icon className="h-5 w-5 ml-3" />
                 <span>{item.name}</span>
+                {showApprovalBadge && <ApprovalBadge />}
               </div>
               <ChevronDown
                 className={cn(
@@ -152,8 +158,11 @@ function DashboardNav() {
               "flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors duration-200",
               isActive && "bg-gray-100"
             )}>
-            <Icon className="h-5 w-5 ml-3" />
-            <span>{item.name}</span>
+            <div className="flex items-center space-x-3 relative">
+              <Icon className="h-5 w-5 ml-3" />
+              <span>{item.name}</span>
+              {showApprovalBadge && <ApprovalBadge />}
+            </div>
           </Link>
         )}
       </li>

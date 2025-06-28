@@ -39,6 +39,9 @@ export function TopicApprovalModal({
         description: "הנושא אושר והועבר לנושאים מאושרים",
       });
 
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
+
       onTopicApproved(topic.id);
       onClose();
     } catch (error) {
@@ -71,6 +74,9 @@ export function TopicApprovalModal({
         title: "הנושא נדחה",
         description: "הנושא נדחה והערות נשמרו",
       });
+
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
 
       onTopicApproved(topic.id);
       onClose();

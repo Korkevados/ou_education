@@ -202,8 +202,8 @@ export async function loginWithEmail(email, password) {
     };
   }
 
-  console.log("התחברות הושלמה בהצלחה, מעביר לדף הבקרה");
-  redirect("/dashboard");
+  console.log("התחברות הושלמה בהצלחה");
+  return { success: true };
 }
 
 export async function checkUser(phone) {

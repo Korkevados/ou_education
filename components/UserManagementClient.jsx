@@ -207,6 +207,10 @@ export default function UserManagementClient({ initialUsers }) {
             : user
         )
       );
+
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
+
       toast.success("המשתמש אושר והופעל בהצלחה");
     } catch (error) {
       console.error("Error activating user:", error);
@@ -238,6 +242,10 @@ export default function UserManagementClient({ initialUsers }) {
             : user
         )
       );
+
+      // Dispatch custom event to refresh approval badge
+      window.dispatchEvent(new CustomEvent("approval-action-completed"));
+
       toast.success("המשתמש הושבת בהצלחה");
     } catch (error) {
       console.error("Error deactivating user:", error);
